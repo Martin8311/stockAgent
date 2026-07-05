@@ -2,6 +2,7 @@
 .vscode/
 .agents/
 .codex/
+.dev/
 *.iml
 
 .env

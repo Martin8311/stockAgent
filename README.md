@@ -28,13 +28,43 @@ harness-agent/
 
 ## 本地运行
 
-### 1. 启动数据库
+### 一键启动
+
+PowerShell 或命令提示符：
+
+```powershell
+.\start-dev.cmd
+```
+
+脚本会自动：
+
+- 启动 Docker Compose MySQL。
+- 等待 MySQL 健康检查。
+- 启动 Spring Boot 后端。
+- 安装缺失的前端依赖并启动 Vite 前端。
+- 将日志写入 `.dev/logs/`。
+
+停止脚本启动的后端和前端：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\stop-dev.ps1
+```
+
+同时停止 MySQL：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\stop-dev.ps1 -StopDocker
+```
+
+### 手动启动
+
+#### 1. 启动数据库
 
 ```bash
 docker compose up -d mysql
 ```
 
-### 2. 启动后端
+#### 2. 启动后端
 
 PowerShell：
 
@@ -53,7 +83,7 @@ mvn -f backend/pom.xml spring-boot:run
 - Login: `POST http://localhost:8080/api/public/auth/login`
 - Me: `GET http://localhost:8080/api/me`，需要 `Authorization: Bearer <token>`
 
-### 3. 启动前端
+#### 3. 启动前端
 
 ```powershell
 cd frontend

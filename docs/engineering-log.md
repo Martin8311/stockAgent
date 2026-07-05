@@ -126,3 +126,14 @@
 - 解决方案：新增项目级 `ApiRequestException`，由 `GlobalExceptionHandler` 显式映射为 `ErrorResponse`。
 - 验证方式：重复注册测试通过，返回 `errorCode=REQUEST_ERROR`。
 - 面试表达：统一 API 错误格式不能只靠默认异常，尤其在 Spring Boot 3 的 ProblemDetails 机制下，业务异常最好有项目级抽象和集中映射。
+
+### 一键启动脚本需要兼顾 Windows 工具链差异
+
+- 阶段：1
+- 现象：本地开发涉及 Docker Compose、Maven、npm、PowerShell 执行策略、日志和进程停止，手动启动容易漏步骤。
+- 影响：项目演示和面试复现成本变高，也不利于后续持续推进。
+- 原因：当前机器上 `mvn` 不一定在 PATH，`npm.ps1` 可能被 PowerShell 策略拦截，前后端又需要分别保持长进程。
+- 定位过程：复盘阶段 0 和阶段 1 的启动路径，确认最稳定的组合是 PowerShell 编排、`cmd /c npm` 调用 npm、自动发现 Maven 路径、后台进程日志落盘。
+- 解决方案：新增 `start-dev.cmd`、`scripts/start-dev.ps1` 和 `scripts/stop-dev.ps1`。启动脚本负责启动 MySQL、等待健康检查、启动后端和前端、记录 PID 与日志；停止脚本按 PID 清理进程，可选停止 MySQL。
+- 验证方式：对 PowerShell 脚本做语法解析检查，避免脚本本身存在语法错误；运行时日志输出到 `.dev/logs/` 便于排查。
+- 面试表达：我不仅实现业务功能，也关注工程可运行性。通过一键启动和日志/PID 管理，让项目更接近真实团队开发体验，而不是只停留在代码能编译。
