@@ -2,6 +2,8 @@ package com.harnessagent.portfolio;
 
 import com.harnessagent.audit.AuditEventService;
 import com.harnessagent.audit.RiskLevel;
+import com.harnessagent.marketdata.MarketDataService;
+import com.harnessagent.marketdata.MarketQuote;
 import com.harnessagent.user.AppUser;
 import com.harnessagent.user.UserRepository;
 import com.harnessagent.web.ApiRequestException;
@@ -30,17 +32,20 @@ public class PortfolioService {
     private final InvestmentAssetRepository assetRepository;
     private final PortfolioTransactionRepository transactionRepository;
     private final AuditEventService auditEventService;
+    private final MarketDataService marketDataService;
 
     public PortfolioService(
             UserRepository userRepository,
             InvestmentAssetRepository assetRepository,
             PortfolioTransactionRepository transactionRepository,
-            AuditEventService auditEventService
+            AuditEventService auditEventService,
+            MarketDataService marketDataService
     ) {
         this.userRepository = userRepository;
         this.assetRepository = assetRepository;
         this.transactionRepository = transactionRepository;
         this.auditEventService = auditEventService;
+        this.marketDataService = marketDataService;
     }
 
     @Transactional(readOnly = true)
@@ -91,17 +96,18 @@ public class PortfolioService {
     }
 
     @Transactional(readOnly = true)
-    public PortfolioSummaryResponse getSummary(Long userId) {
-        List<HoldingResponse> holdings = buildAccumulators(userId).values().stream()
+    public PortfolioSummaryResponse getSummary(Long userId, String actor) {
+        Map<Long, HoldingAccumulator> accumulators = buildAccumulators(userId);
+        List<HoldingResponse> holdings = accumulators.values().stream()
                 .filter(HoldingAccumulator::hasOpenPosition)
-                .map(HoldingAccumulator::toResponse)
+                .map(accumulator -> accumulator.toResponse(resolveLatestPrice(actor, accumulator)))
                 .sorted(Comparator.comparing((HoldingResponse holding) -> holding.asset().symbol()))
                 .toList();
 
         BigDecimal totalCostBasis = sum(holdings, HoldingResponse::costBasis);
         BigDecimal totalMarketValue = sum(holdings, HoldingResponse::marketValue);
         BigDecimal totalUnrealizedPnl = sum(holdings, HoldingResponse::unrealizedPnl);
-        BigDecimal totalRealizedPnl = buildAccumulators(userId).values().stream()
+        BigDecimal totalRealizedPnl = accumulators.values().stream()
                 .map(HoldingAccumulator::realizedPnl)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal totalRatio = totalCostBasis.compareTo(BigDecimal.ZERO) == 0
@@ -119,6 +125,21 @@ public class PortfolioService {
                 buildRiskWarnings(holdings, totalMarketValue, totalRatio),
                 PORTFOLIO_DISCLAIMER
         );
+    }
+
+    private BigDecimal resolveLatestPrice(String actor, HoldingAccumulator accumulator) {
+        InvestmentAsset asset = accumulator.asset();
+        try {
+            MarketQuote quote = marketDataService.getQuoteForPortfolioValuation(
+                    actor,
+                    asset.getSymbol(),
+                    asset.getExchange(),
+                    asset.getCurrency()
+            );
+            return quote.latestPrice();
+        } catch (RuntimeException ex) {
+            return asset.getLatestPrice();
+        }
     }
 
     private InvestmentAsset upsertAsset(PortfolioTransactionRequest request) {

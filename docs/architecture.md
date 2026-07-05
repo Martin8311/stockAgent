@@ -33,6 +33,8 @@ flowchart LR
 - `security`：认证、授权、CORS、方法级权限。
 - `audit`：审计实体、仓储、服务。
 - `compliance`：免责声明、输出约束、合规检查。
+- `portfolio`：资产、交易流水、持仓汇总、盈亏计算和组合风险摘要。
+- `marketdata`：市场数据 Provider 抽象、本地 mock 行情、外部适配预留、报价来源和风险提示。
 - `agent`：阶段 4 起接入 Spring AI 和结构化 Agent 输出。
 - `sandbox`：阶段 6 起提供受限执行、超时、资源限制和审计。
 - `skill`：阶段 7 起提供 Skill 版本化、测试和审批流。
@@ -50,4 +52,3 @@ flowchart LR
 - 对杠杆、短线、集中持仓、高波动资产主动提示风险。
 - 高风险操作进入人工审批队列。
 - Sandbox 和 Skill 更新都必须写入审计日志。
-

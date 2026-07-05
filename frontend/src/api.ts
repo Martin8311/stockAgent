@@ -2,6 +2,8 @@ import type {
   ApiResponse,
   AuthResponse,
   ComplianceNotice,
+  MarketDataProvider,
+  MarketQuote,
   PortfolioSummary,
   PortfolioTransaction,
   PortfolioTransactionPayload,
@@ -134,4 +136,18 @@ export function recordPortfolioTransaction(
 
 export function deletePortfolioTransaction(token: string, transactionId: number): Promise<ApiResponse<null>> {
   return deleteJson<ApiResponse<null>>(`/api/portfolio/transactions/${transactionId}`, token);
+}
+
+export function getMarketDataProviders(token: string): Promise<ApiResponse<MarketDataProvider[]>> {
+  return getJsonWithToken<ApiResponse<MarketDataProvider[]>>("/api/market-data/providers", token);
+}
+
+export function getMarketQuote(
+  token: string,
+  symbol: string,
+  exchange: string,
+  currency: string
+): Promise<ApiResponse<MarketQuote>> {
+  const params = new URLSearchParams({ symbol, exchange, currency });
+  return getJsonWithToken<ApiResponse<MarketQuote>>(`/api/market-data/quote?${params.toString()}`, token);
 }

@@ -86,8 +86,8 @@ class PortfolioControllerTest {
                 .andExpect(jsonPath("$.data.holdingCount").value(1))
                 .andExpect(jsonPath("$.data.holdings[0].asset.symbol").value("AAPL"))
                 .andExpect(jsonPath("$.data.holdings[0].quantity").value(8.0))
-                .andExpect(jsonPath("$.data.holdings[0].latestPrice").value(120.0))
-                .andExpect(jsonPath("$.data.totalMarketValue").value(960.0))
+                .andExpect(jsonPath("$.data.holdings[0].latestPrice").value(189.32))
+                .andExpect(jsonPath("$.data.totalMarketValue").value(1514.56))
                 .andExpect(jsonPath("$.data.totalRealizedPnl").value(38.8))
                 .andExpect(jsonPath("$.data.riskWarnings").isArray())
                 .andExpect(jsonPath("$.data.disclaimer").isNotEmpty());

@@ -227,3 +227,27 @@
 - 解决方案：资产表保存 `latest_price`，录入交易时用该交易价格更新；组合摘要基于 `latest_price` 计算市值和未实现盈亏，并明确输出风险免责声明。
 - 验证方式：买入后卖出测试中，资产最新价更新为卖出价，组合市值和盈亏按最新价计算通过断言。
 - 面试表达：阶段交付要控制复杂度。我先让持仓闭环可运行，再把行情接入作为独立阶段处理，避免外部依赖污染核心账本逻辑。
+
+## 阶段 3：市场数据接入抽象
+
+### 先做 Provider 抽象和 Mock 行情，不直接接真实外部数据
+
+- 阶段：3
+- 现象：组合估值需要市场价格，但真实行情 API 会带来 API Key、限流、费用、授权范围、数据延迟和合规责任。
+- 影响：如果过早接真实外部源，阶段 3 会被外部网络和供应商细节拖住，也可能把真实行情误用于演示中的投资判断。
+- 原因：当前目标是建立可替换的数据源边界和结构化输出契约，而不是追求实时行情覆盖。
+- 定位过程：沿着后续 Agent 需求反推 quote DTO，确认至少要包含价格、来源、时间、置信度、假设、风险提示和免责声明。
+- 解决方案：新增 `marketdata` 模块，定义 `MarketDataProvider`、`MarketQuote`、Provider descriptor；默认启用 deterministic mock provider，外部 provider 仅作为 disabled placeholder。
+- 验证方式：新增 `MarketDataControllerTest` 覆盖 provider 列表、mock quote、认证要求；后端 `mvn test` 通过 12 个测试。
+- 面试表达：我把“可运行 demo”和“真实外部集成”分开：先稳定契约、审计和风险披露，再在后续阶段用同一个接口替换为真实数据源。
+
+### 组合估值接入行情服务时保留 fallback
+
+- 阶段：3
+- 现象：Portfolio summary 现在可以使用 MarketDataService 报价，但行情 provider 可能禁用或不可用。
+- 影响：如果没有 fallback，市场数据异常会导致整个持仓摘要不可用；如果静默失败，又会隐藏估值来源。
+- 原因：投资研究系统要区分账本数据和行情数据，账本应尽量可用，行情失败时应退回可解释的本地估值。
+- 定位过程：检查阶段 2 的 `InvestmentAsset.latestPrice`，它已经保存了最近交易价，可作为最低限度 fallback。
+- 解决方案：持仓估值优先调用 MarketDataService；异常时回落到资产 latest price。quote 本身仍包含 sourceType、assumptions、riskWarnings，前端展示来源和风险。
+- 验证方式：Portfolio 测试断言 AAPL 市值改用 mock quote `189.32`，证明组合估值已由 MarketDataService 驱动。
+- 面试表达：这体现了降级设计：行情服务增强估值质量，但账本和组合摘要不被外部数据源单点拖垮。

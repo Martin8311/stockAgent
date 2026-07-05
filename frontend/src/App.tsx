@@ -4,6 +4,8 @@ import {
   deletePortfolioTransaction,
   getComplianceNotice,
   getCurrentUser,
+  getMarketDataProviders,
+  getMarketQuote,
   getPortfolioSummary,
   getPortfolioTransactions,
   getSystemHealth,
@@ -17,9 +19,11 @@ import {
   getCapitalPurposeLabel,
   getInvestmentHorizonLabel,
   getLocalizedComplianceNotice,
+  getMarketDataSourceLabel,
   getRiskPreferenceLabel,
   getTransactionTypeLabel,
   LANGUAGE_STORAGE_KEY,
+  localizeMarketDataText,
   localizePortfolioRiskWarnings,
   messages,
   normalizeLanguage,
@@ -30,6 +34,8 @@ import type {
   CapitalPurpose,
   ComplianceNotice,
   InvestmentHorizon,
+  MarketDataProvider,
+  MarketQuote,
   PortfolioSummary,
   PortfolioTransaction,
   AssetType,
@@ -71,6 +77,12 @@ function App() {
   const [portfolioSummary, setPortfolioSummary] = useState<PortfolioSummary | null>(null);
   const [transactions, setTransactions] = useState<PortfolioTransaction[]>([]);
   const [portfolioMessage, setPortfolioMessage] = useState<string | null>(null);
+  const [marketProviders, setMarketProviders] = useState<MarketDataProvider[]>([]);
+  const [marketQuote, setMarketQuote] = useState<MarketQuote | null>(null);
+  const [marketMessage, setMarketMessage] = useState<string | null>(null);
+  const [quoteSymbol, setQuoteSymbol] = useState("AAPL");
+  const [quoteExchange, setQuoteExchange] = useState("NASDAQ");
+  const [quoteCurrency, setQuoteCurrency] = useState("USD");
   const [symbol, setSymbol] = useState("AAPL");
   const [assetName, setAssetName] = useState("Apple Inc.");
   const [assetType, setAssetType] = useState<AssetType>("STOCK");
@@ -89,6 +101,14 @@ function App() {
   const portfolioWarnings = useMemo(
     () => localizePortfolioRiskWarnings(language, portfolioSummary?.riskWarnings ?? []),
     [language, portfolioSummary]
+  );
+  const marketAssumptions = useMemo(
+    () => localizeMarketDataText(language, marketQuote?.assumptions ?? []),
+    [language, marketQuote]
+  );
+  const marketWarnings = useMemo(
+    () => localizeMarketDataText(language, marketQuote?.riskWarnings ?? []),
+    [language, marketQuote]
   );
 
   useEffect(() => {
@@ -129,6 +149,7 @@ function App() {
         setInvestmentHorizon(response.data.investmentHorizon);
         setCapitalPurpose(response.data.capitalPurpose);
         loadPortfolio(token);
+        loadMarketProviders(token);
       })
       .catch(() => {
         localStorage.removeItem(TOKEN_STORAGE_KEY);
@@ -136,6 +157,8 @@ function App() {
         setProfile(null);
         setPortfolioSummary(null);
         setTransactions([]);
+        setMarketProviders([]);
+        setMarketQuote(null);
       });
   }, [token]);
 
@@ -220,6 +243,26 @@ function App() {
     setTransactions(transactionResponse.data);
   }
 
+  async function loadMarketProviders(activeToken: string) {
+    const response = await getMarketDataProviders(activeToken);
+    setMarketProviders(response.data);
+  }
+
+  async function handleQuoteSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!token) {
+      return;
+    }
+    setMarketMessage(null);
+    try {
+      const response = await getMarketQuote(token, quoteSymbol, quoteExchange, quoteCurrency);
+      setMarketQuote(response.data);
+      setMarketMessage(t.marketData.fetched);
+    } catch (requestError) {
+      setMarketMessage(requestError instanceof Error ? requestError.message : t.errors.unknownApi);
+    }
+  }
+
   function applyAuth(auth: AuthResponse) {
     localStorage.setItem(TOKEN_STORAGE_KEY, auth.accessToken);
     setToken(auth.accessToken);
@@ -231,6 +274,8 @@ function App() {
     setProfile(null);
     setPortfolioSummary(null);
     setTransactions([]);
+    setMarketProviders([]);
+    setMarketQuote(null);
     setAuthMessage(t.auth.signedOut);
   }
 
@@ -457,6 +502,121 @@ function App() {
                 {t.profile.save}
               </button>
             </form>
+          </section>
+        )}
+
+        {profile && (
+          <section className="section-panel market-data-workspace">
+            <div className="section-heading">
+              <div>
+                <h2>{t.marketData.title}</h2>
+                <span>{t.marketData.subtitle}</span>
+              </div>
+            </div>
+
+            <div className="market-data-grid">
+              <form className="market-quote-form" onSubmit={handleQuoteSubmit}>
+                <h3>{t.marketData.lookupTitle}</h3>
+                <label>
+                  {t.marketData.symbol}
+                  <input value={quoteSymbol} onChange={(event) => setQuoteSymbol(event.target.value)} />
+                </label>
+                <label>
+                  {t.marketData.exchange}
+                  <input value={quoteExchange} onChange={(event) => setQuoteExchange(event.target.value)} />
+                </label>
+                <label>
+                  {t.marketData.currency}
+                  <input value={quoteCurrency} onChange={(event) => setQuoteCurrency(event.target.value)} />
+                </label>
+                <button className="primary-action" type="submit">
+                  {t.marketData.lookup}
+                </button>
+                {marketMessage && <div className="inline-message">{marketMessage}</div>}
+              </form>
+
+              <div className="market-quote-card">
+                {marketQuote ? (
+                  <>
+                    <div className="quote-heading">
+                      <div>
+                        <strong>{marketQuote.symbol}</strong>
+                        <span>
+                          {marketQuote.exchange} · {marketQuote.currency}
+                        </span>
+                      </div>
+                      <span className="step-tag">
+                        {getMarketDataSourceLabel(language, marketQuote.sourceType)}
+                      </span>
+                    </div>
+                    <div className="summary-metrics quote-metrics">
+                      <div>
+                        <span>{t.marketData.latestPrice}</span>
+                        <strong>{formatMoney(marketQuote.latestPrice, marketQuote.currency)}</strong>
+                      </div>
+                      <div>
+                        <span>{t.marketData.previousClose}</span>
+                        <strong>{formatMoney(marketQuote.previousClose, marketQuote.currency)}</strong>
+                      </div>
+                      <div>
+                        <span>{t.marketData.change}</span>
+                        <strong>{formatMoney(marketQuote.changeAmount, marketQuote.currency)}</strong>
+                        <small>{formatPercent(marketQuote.changePercent)}</small>
+                      </div>
+                      <div>
+                        <span>{t.marketData.confidence}</span>
+                        <strong>{formatPercent(marketQuote.confidence)}</strong>
+                      </div>
+                    </div>
+                    <div className="quote-details">
+                      <span>
+                        {t.marketData.source}: {marketQuote.provider}
+                      </span>
+                      <span>
+                        {t.marketData.asOf}: {new Date(marketQuote.asOf).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="risk-note-list">
+                      <strong>{t.marketData.assumptions}</strong>
+                      <ul>
+                        {marketAssumptions.map((line) => (
+                          <li key={line}>{line}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="risk-note-list">
+                      <strong>{t.marketData.riskWarnings}</strong>
+                      <ul>
+                        {marketWarnings.map((line) => (
+                          <li key={line}>{line}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </>
+                ) : (
+                  <div className="empty-state">{t.marketData.noQuote}</div>
+                )}
+              </div>
+
+              <div className="provider-list">
+                <h3>{t.marketData.providerTitle}</h3>
+                {marketProviders.map((provider) => (
+                  <article className="provider-row" key={provider.name}>
+                    <div>
+                      <strong>{provider.name}</strong>
+                      <span>{provider.description}</span>
+                    </div>
+                    <div className="provider-tags">
+                      <span className="step-tag">{getMarketDataSourceLabel(language, provider.sourceType)}</span>
+                      <span className="step-tag">
+                        {provider.enabled ? t.marketData.enabled : t.marketData.disabled}
+                      </span>
+                      {provider.requiresApproval && <span className="step-tag">{t.marketData.approvalRequired}</span>}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
           </section>
         )}
 

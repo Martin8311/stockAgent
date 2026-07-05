@@ -48,3 +48,8 @@ app:
       - "Historical performance does not guarantee future results."
       - "Forecasts must disclose assumptions, data sources, confidence, and risk."
       - "Personalized suggestions require risk preference, investment horizon, and capital purpose."
+  market-data:
+    mock-enabled: true
+    external-enabled: false
+    mock-provider-name: local-mock-market-data
+    external-provider-name: external-adapter-placeholder

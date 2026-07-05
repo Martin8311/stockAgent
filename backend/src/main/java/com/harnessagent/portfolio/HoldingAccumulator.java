@@ -46,7 +46,10 @@ class HoldingAccumulator {
     }
 
     HoldingResponse toResponse() {
-        BigDecimal latestPrice = asset.getLatestPrice() == null ? averageCost() : asset.getLatestPrice();
+        return toResponse(asset.getLatestPrice() == null ? averageCost() : asset.getLatestPrice());
+    }
+
+    HoldingResponse toResponse(BigDecimal latestPrice) {
         BigDecimal marketValue = quantity.multiply(latestPrice);
         BigDecimal unrealizedPnl = marketValue.subtract(costBasis);
         BigDecimal ratio = costBasis.compareTo(BigDecimal.ZERO) == 0
@@ -65,13 +68,16 @@ class HoldingAccumulator {
         );
     }
 
+    InvestmentAsset asset() {
+        return asset;
+    }
+
     BigDecimal costBasis() {
         return costBasis;
     }
 
     BigDecimal marketValue() {
-        BigDecimal latestPrice = asset.getLatestPrice() == null ? averageCost() : asset.getLatestPrice();
-        return quantity.multiply(latestPrice);
+        return toResponse().marketValue();
     }
 
     BigDecimal unrealizedPnl() {

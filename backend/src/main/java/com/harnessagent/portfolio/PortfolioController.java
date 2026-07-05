@@ -55,6 +55,6 @@ public class PortfolioController {
     @GetMapping("/summary")
     @Operation(summary = "Get current user's portfolio holdings and risk summary")
     public ApiResponse<PortfolioSummaryResponse> summary(@AuthenticationPrincipal AuthenticatedUser user) {
-        return ApiResponse.ok(portfolioService.getSummary(user.id()));
+        return ApiResponse.ok(portfolioService.getSummary(user.id(), user.email()));
     }
 }

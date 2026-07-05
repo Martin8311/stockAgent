@@ -33,6 +33,7 @@ export type CapitalPurpose =
   | "GENERAL_WEALTH";
 export type AssetType = "STOCK" | "FUND" | "ETF" | "BOND" | "CASH" | "CRYPTO" | "OTHER";
 export type TransactionType = "BUY" | "SELL";
+export type MarketDataSourceType = "MOCK" | "EXTERNAL_PLACEHOLDER";
 
 export interface AuthUser {
   id: number;
@@ -136,4 +137,29 @@ export interface PortfolioTransactionPayload {
   fee: number;
   tradedAt: string;
   note: string;
+}
+
+export interface MarketDataProvider {
+  name: string;
+  sourceType: MarketDataSourceType;
+  enabled: boolean;
+  requiresApproval: boolean;
+  description: string;
+}
+
+export interface MarketQuote {
+  symbol: string;
+  exchange: string;
+  currency: string;
+  latestPrice: number;
+  previousClose: number;
+  changeAmount: number;
+  changePercent: number;
+  asOf: string;
+  provider: string;
+  sourceType: MarketDataSourceType;
+  confidence: number;
+  assumptions: string[];
+  riskWarnings: string[];
+  disclaimer: string;
 }

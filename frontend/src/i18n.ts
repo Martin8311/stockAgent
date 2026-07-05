@@ -3,6 +3,7 @@ import type {
   CapitalPurpose,
   ComplianceNotice,
   InvestmentHorizon,
+  MarketDataSourceType,
   TransactionType,
   RiskPreference
 } from "./types";
@@ -26,10 +27,10 @@ export const messages = {
       connecting: "Connecting"
     },
     hero: {
-      eyebrow: "Phase 1 identity foundation",
-      title: "Secure sign-in, profile context, and role-aware workflow baseline",
+      eyebrow: "Phase 3 market data foundation",
+      title: "Portfolio workflow with governed mock market data",
       body:
-        "The assistant now supports registration, login, bearer token authentication, role checks, and investment profile context. This creates the trust boundary for portfolio, market data, sandbox, and agent workflows.",
+        "The assistant now combines secure identity, portfolio accounting, structured market data abstraction, local mock quotes, provider audit, and investment-risk disclosure.",
       apiDocs: "API docs",
       serviceHealth: "Service health",
       backendUnavailable: "Backend API unavailable"
@@ -66,9 +67,14 @@ export const messages = {
           status: "Ready"
         },
         {
-          agent: "PortfolioAgent",
-          description: "Holdings and portfolio analysis begin in the next delivery phase.",
-          status: "Next"
+          agent: "Portfolio",
+          description: "Transaction ledger, average cost, realized P/L, unrealized P/L, and holdings summary.",
+          status: "Ready"
+        },
+        {
+          agent: "MarketData",
+          description: "Provider abstraction, local mock quotes, source confidence, assumptions, and audit logging.",
+          status: "Ready"
         },
         {
           agent: "ComplianceAgent",
@@ -125,6 +131,29 @@ export const messages = {
       disclaimer:
         "Portfolio analytics are educational and risk-oriented only. They do not promise returns and do not replace advice from a licensed financial advisor."
     },
+    marketData: {
+      title: "Market data",
+      subtitle: "Phase 3 mock provider and external adapter slot",
+      lookupTitle: "Quote lookup",
+      providerTitle: "Providers",
+      symbol: "Symbol",
+      exchange: "Exchange",
+      currency: "Currency",
+      lookup: "Get quote",
+      latestPrice: "Latest price",
+      previousClose: "Previous close",
+      change: "Change",
+      confidence: "Confidence",
+      source: "Source",
+      asOf: "As of",
+      assumptions: "Assumptions",
+      riskWarnings: "Market data risk warnings",
+      enabled: "Enabled",
+      disabled: "Disabled",
+      approvalRequired: "Approval required",
+      noQuote: "No quote loaded yet.",
+      fetched: "Quote loaded."
+    },
     errors: {
       unknownApi: "Unknown API error"
     }
@@ -143,10 +172,10 @@ export const messages = {
       connecting: "连接中"
     },
     hero: {
-      eyebrow: "阶段 1：认证与身份基础",
-      title: "安全登录、画像上下文与基于角色的工作流基线",
+      eyebrow: "阶段 3：市场数据基础",
+      title: "带受控 Mock 行情的持仓工作流",
       body:
-        "当前系统已支持注册、登录、Bearer Token 认证、角色校验和投资画像上下文，为后续持仓、市场数据、Sandbox 与 Agent 工作流建立可信边界。",
+        "当前系统已组合安全身份、持仓账本、结构化市场数据抽象、本地 Mock 行情、数据源审计和投资风险提示。",
       apiDocs: "接口文档",
       serviceHealth: "服务健康",
       backendUnavailable: "后端 API 不可用"
@@ -183,9 +212,14 @@ export const messages = {
           status: "就绪"
         },
         {
-          agent: "PortfolioAgent",
-          description: "持仓管理和组合分析将在下一阶段开始交付。",
-          status: "下一步"
+          agent: "Portfolio",
+          description: "交易台账、平均成本、已实现盈亏、未实现盈亏和持仓摘要已经就绪。",
+          status: "就绪"
+        },
+        {
+          agent: "MarketData",
+          description: "数据源抽象、本地 Mock 行情、来源置信度、假设说明和审计日志已经接入。",
+          status: "就绪"
         },
         {
           agent: "ComplianceAgent",
@@ -240,6 +274,29 @@ export const messages = {
       noTransactions: "暂无交易。",
       delete: "删除",
       disclaimer: "组合分析仅用于教育性解释和风险提示，不承诺收益，也不替代持牌金融顾问意见。"
+    },
+    marketData: {
+      title: "市场数据",
+      subtitle: "阶段 3：Mock 行情源与外部适配预留",
+      lookupTitle: "行情查询",
+      providerTitle: "数据源",
+      symbol: "代码",
+      exchange: "交易所",
+      currency: "币种",
+      lookup: "查询行情",
+      latestPrice: "最新价格",
+      previousClose: "昨收",
+      change: "涨跌",
+      confidence: "置信度",
+      source: "来源",
+      asOf: "时间",
+      assumptions: "假设",
+      riskWarnings: "市场数据风险提示",
+      enabled: "已启用",
+      disabled: "未启用",
+      approvalRequired: "需要审批",
+      noQuote: "尚未加载行情。",
+      fetched: "行情已加载。"
     },
     errors: {
       unknownApi: "未知 API 错误"
@@ -328,6 +385,17 @@ const transactionTypeLabels: Record<Language, Record<TransactionType, string>> =
   }
 };
 
+const marketDataSourceLabels: Record<Language, Record<MarketDataSourceType, string>> = {
+  en: {
+    MOCK: "Mock",
+    EXTERNAL_PLACEHOLDER: "External placeholder"
+  },
+  zh: {
+    MOCK: "Mock 本地数据",
+    EXTERNAL_PLACEHOLDER: "外部适配预留"
+  }
+};
+
 const zhComplianceNotice: ComplianceNotice = {
   title: "投资研究合规提示",
   allowedUse: "本系统仅提供教育性解释、辅助分析和风险提醒。",
@@ -364,6 +432,10 @@ export function getTransactionTypeLabel(language: Language, value: TransactionTy
   return transactionTypeLabels[language][value];
 }
 
+export function getMarketDataSourceLabel(language: Language, value: MarketDataSourceType): string {
+  return marketDataSourceLabels[language][value];
+}
+
 export function localizePortfolioRiskWarnings(language: Language, warnings: string[]): string[] {
   if (language === "en") {
     return warnings;
@@ -387,6 +459,28 @@ export function localizePortfolioRiskWarnings(language: Language, warnings: stri
       return messages.zh.portfolio.disclaimer;
     }
     return warning;
+  });
+}
+
+export function localizeMarketDataText(language: Language, lines: string[]): string[] {
+  if (language === "en") {
+    return lines;
+  }
+
+  return lines.map((line) => {
+    if (line.startsWith("Quote is generated by a deterministic local mock provider.")) {
+      return "行情由确定性的本地 Mock Provider 生成。";
+    }
+    if (line.startsWith("Price is intended to exercise portfolio valuation flow")) {
+      return "该价格仅用于在外部行情接入前验证组合估值流程。";
+    }
+    if (line.startsWith("Mock prices are not real-time quotes.")) {
+      return "Mock 价格不是实时行情。";
+    }
+    if (line.startsWith("Do not use mock data for actual investment decisions.")) {
+      return "不要将 Mock 数据用于真实投资决策。";
+    }
+    return line;
   });
 }
 
