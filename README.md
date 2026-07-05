@@ -56,6 +56,21 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\stop-dev.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\stop-dev.ps1 -StopDocker
 ```
 
+如果直接双击 `start-dev.cmd`，窗口会在成功或失败后保留提示，失败详情会写入 `.dev/logs/start-dev.log`。
+
+Docker Desktop 不可访问时，脚本会自动降级到本地 H2 dev profile，保证演示环境可以启动；MySQL/Docker 仍然是首选开发数据库路径。常用参数：
+
+```powershell
+# 明确使用 H2，本地演示最快
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\start-dev.ps1 -UseH2
+
+# 必须使用 Docker/MySQL，Docker 不可用时直接失败
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\start-dev.ps1 -RequireDocker
+
+# 自己已经启动 MySQL 时跳过 Docker Compose
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\start-dev.ps1 -SkipDocker
+```
+
 ### 手动启动
 
 #### 1. 启动数据库

@@ -137,3 +137,58 @@
 - 解决方案：新增 `start-dev.cmd`、`scripts/start-dev.ps1` 和 `scripts/stop-dev.ps1`。启动脚本负责启动 MySQL、等待健康检查、启动后端和前端、记录 PID 与日志；停止脚本按 PID 清理进程，可选停止 MySQL。
 - 验证方式：对 PowerShell 脚本做语法解析检查，避免脚本本身存在语法错误；运行时日志输出到 `.dev/logs/` 便于排查。
 - 面试表达：我不仅实现业务功能，也关注工程可运行性。通过一键启动和日志/PID 管理，让项目更接近真实团队开发体验，而不是只停留在代码能编译。
+
+### 一键启动失败时窗口直接关闭，缺少可见诊断信息
+
+- 阶段：1
+- 现象：用户双击 `start-dev.cmd` 后项目启动失败，但命令窗口立即关闭，看不到报错。
+- 影响：本地演示无法自助排查，面试或录屏时会显得项目不可运行。
+- 原因：`.cmd` 只透传 PowerShell 脚本，没有保留退出码、没有 `pause`，PowerShell 脚本也没有全局 transcript 和 trap。
+- 定位过程：检查 `.dev/logs/` 发现没有后端/前端日志和 PID，说明脚本在启动服务前已经失败；随后直接在终端执行脚本复现错误。
+- 解决方案：`start-dev.cmd` 捕获 `%ERRORLEVEL%`，成功或失败后保留窗口；`scripts/start-dev.ps1` 增加 `Start-Transcript`、全局 `trap` 和 `.dev/logs/start-dev.log`。
+- 验证方式：故意触发 Docker 权限失败，窗口输出失败原因和日志路径，不再静默关闭。
+- 面试表达：启动脚本不是简单拼命令，关键是失败可观测。CLI/脚本也要像后端服务一样有日志、错误边界和可操作提示。
+
+### Docker Engine 权限不足导致 MySQL 无法启动
+
+- 阶段：1
+- 现象：`docker compose up -d mysql` 报 `Access is denied`，无法连接 `//./pipe/docker_engine`。
+- 影响：默认 MySQL 开发环境无法启动，后端依赖数据库时整个项目不可用。
+- 原因：Windows 上 Docker Desktop/Engine pipe 需要当前用户具备访问权限，当前终端或沙箱用户无法连接 Docker daemon。
+- 定位过程：先运行一键脚本复现，再查看 Docker 输出，确认 Docker CLI 存在但 daemon pipe 被拒绝访问，不是 compose 文件语法问题。
+- 解决方案：启动脚本先执行 `docker info` 探测 Engine 可用性；不可用时给出管理员权限/Docker Desktop 提示，并自动降级到 `local-h2` profile，保证本地演示可继续运行。需要强制 MySQL 时可加 `-RequireDocker`。
+- 验证方式：在 Docker 不可访问环境下运行脚本，看到明确 warning，并进入 H2 fallback。
+- 面试表达：我把基础设施依赖做成可探测、可降级、可强制的三种路径：默认追求真实 MySQL，演示环境保证可运行，严格模式保证问题不会被隐藏。
+
+### PowerShell 5.1 与 native command/环境变量兼容问题
+
+- 阶段：1
+- 现象：脚本先后遇到 `RandomNumberGenerator.Fill` 不存在、Docker stderr warning 触发 trap、`Path`/`PATH` 重复导致 `Start-Process` 报重复键。
+- 影响：同一脚本在不同 Windows/PowerShell 版本和受限运行环境中表现不一致。
+- 原因：Windows PowerShell 5.1 基于 .NET Framework，不支持较新的 `RandomNumberGenerator.Fill` 静态方法；`$ErrorActionPreference = Stop` 会把部分 native stderr 记录当作终止错误；环境变量字典在 Windows 下大小写不敏感，重复的 `Path`/`PATH` 会影响子进程创建。
+- 定位过程：逐次运行脚本，观察每次失败的最小错误；确认失败发生在服务启动前、Docker 探测阶段和 `Start-Process` 创建阶段。
+- 解决方案：随机密钥生成改为 `RandomNumberGenerator.Create().GetBytes()`；native 命令封装中临时将错误策略切回 `Continue` 并使用 exit code 判断；启动前规范化进程级 PATH 变量。
+- 验证方式：PowerShell 解析检查通过；脚本可以继续走到 Docker fallback、后端/前端启动和健康检查阶段。
+- 面试表达：跨平台脚本要考虑 shell、运行时和环境变量模型，不应只在一台机器的“幸运路径”上验证。
+
+### 后台 Maven 子进程与本地仓库权限/上下文不一致
+
+- 阶段：1
+- 现象：后台启动 Spring Boot 时，Maven 先找不到本地依赖并访问 Maven Central，随后在受限环境中写 `C:\Users\admin\.m2\repository` 报 `AccessDeniedException`。
+- 影响：后端无法在当前沙箱里通过 `spring-boot:run` 启动，但单独执行后端测试可以通过。
+- 原因：Codex 沙箱中的后台子进程用户上下文与 `$HOME`/本地 Maven 仓库权限不完全一致；同时网络访问受限，缺失的 Maven plugin 依赖不能即时下载。
+- 定位过程：查看 `.dev/logs/backend.log`，区分应用启动失败和构建工具失败；再执行 `mvn test` 验证业务代码、Flyway、JPA、Security 测试均通过。
+- 解决方案：生成的后端 run script 显式传入 `-Dmaven.repo.local=$HOME\.m2\repository`，减少子进程仓库解析漂移；健康检查发现后端提前退出时让一键脚本返回失败并指向后端日志。
+- 验证方式：`mvn test` 通过 7 个后端测试；脚本在后端提前退出时返回非零退出码并保留错误提示。
+- 面试表达：排查启动失败时要先分层：是应用代码、数据库、构建工具、网络还是权限。这个案例里通过日志把 Maven 仓库权限问题和后端业务正确性拆开验证。
+
+### 停止脚本只停止 wrapper 进程，Maven/Vite 子进程残留
+
+- 阶段：1
+- 现象：`stop-dev.ps1` 停止 PID 文件里的 PowerShell wrapper 后，仍能看到 Java、Node 和 cmd 子进程占用端口。
+- 影响：再次启动可能端口冲突，演示环境也会出现“明明停止了但服务还在”的错觉。
+- 原因：`Start-Process` 启动的是 PowerShell wrapper，wrapper 再启动 Maven/Vite；单独 `Stop-Process` wrapper 不一定会递归停止 Maven、Spring Boot、npm、Vite 这些后代进程。
+- 定位过程：停止脚本执行后检查 `Get-Process java,node,cmd`，再通过 `Win32_Process` 查看 ParentProcessId 和 CommandLine，确认残留进程全部来自本项目启动链路。
+- 解决方案：停止脚本优先使用 `taskkill /T /F` 停整棵进程树；PID 文件不存在时再按命令行包含项目根目录的 Java/Node/CMD 做 orphan 兜底清理。
+- 验证方式：H2 模式启动成功后执行停止脚本；提升权限清理后确认不再存在本项目 Java/Node/CMD 残留进程。
+- 面试表达：本地开发脚本也要做资源生命周期管理。只记录 PID 不够，还要考虑 wrapper、shell、构建工具和实际服务进程之间的父子关系。
