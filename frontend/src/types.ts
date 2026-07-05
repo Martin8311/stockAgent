@@ -34,6 +34,8 @@ export type CapitalPurpose =
 export type AssetType = "STOCK" | "FUND" | "ETF" | "BOND" | "CASH" | "CRYPTO" | "OTHER";
 export type TransactionType = "BUY" | "SELL";
 export type MarketDataSourceType = "MOCK" | "EXTERNAL_PLACEHOLDER";
+export type AiProviderType = "OLLAMA" | "MINIMAX";
+export type TokenUsageSource = "ACTUAL" | "ESTIMATED" | "MOCK";
 
 export interface AuthUser {
   id: number;
@@ -162,4 +164,60 @@ export interface MarketQuote {
   assumptions: string[];
   riskWarnings: string[];
   disclaimer: string;
+}
+
+export interface AiModelDescriptor {
+  id: string;
+  provider: AiProviderType;
+  displayName: string;
+  modelName: string;
+  enabled: boolean;
+  local: boolean;
+  freeTier: boolean;
+  paidTier: boolean;
+  testModeFree: boolean;
+  requiresApiKey: boolean;
+  billingMode: string;
+  promptPricePerMillionTokens: number;
+  completionPricePerMillionTokens: number;
+  currency: string;
+  statusNote: string;
+}
+
+export interface TokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  usageSource: TokenUsageSource;
+  estimatedCost: number;
+  currency: string;
+  billable: boolean;
+  testMode: boolean;
+}
+
+export interface InvestmentAnalysisPayload {
+  modelId: string;
+  symbol: string;
+  exchange: string;
+  currency: string;
+  question: string;
+  includePortfolioContext: boolean;
+}
+
+export interface InvestmentAnalysisResponse {
+  analysisId: number;
+  symbol: string;
+  exchange: string;
+  currency: string;
+  model: AiModelDescriptor;
+  quote: MarketQuote;
+  investmentSummary: string;
+  keyObservations: string[];
+  assumptions: string[];
+  riskWarnings: string[];
+  educationalNotes: string[];
+  confidence: number;
+  tokenUsage: TokenUsage;
+  disclaimer: string;
+  createdAt: string;
 }

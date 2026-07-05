@@ -2,48 +2,66 @@
 
 ## Agent 职责
 
-- `MarketDataAgent`：采集、清洗、校验市场数据，记录数据来源与时间。
+- `MarketDataAgent`：采集、清洗、校验市场数据，记录数据来源、时间、置信度、假设和风险。
 - `PortfolioAgent`：分析持仓结构、盈亏、资产集中度和再平衡空间。
 - `RiskAgent`：评估波动、集中度、回撤、流动性、杠杆和用户画像缺口。
 - `StrategyAgent`：生成辅助分析、可选方案和教育性解释，不给确定性收益承诺。
 - `ComplianceAgent`：检查输出是否包含免责声明、风险提示、假设、数据来源和禁止用语。
-- `SupervisorAgent`：编排任务、触发人工介入、汇总结构化结果。
+- `AnalysisAgent`：阶段 4 已落地的单 Agent 入口，负责调用选定模型并生成结构化投资分析。
+- `SupervisorAgent`：阶段 5 起编排任务、触发人工介入、汇总结结构化结果。
+
+## 阶段 4 已落地的 AI 分析流
+
+```mermaid
+sequenceDiagram
+  participant Web as React Web
+  participant API as AiAnalysisController
+  participant Catalog as AiModelCatalog
+  participant Agent as InvestmentAnalysisService
+  participant Market as MarketDataService
+  participant LLM as Ollama/MiniMax Gateway
+  participant Billing as TokenBillingService
+  participant Audit as AuditEventService
+
+  Web->>API: POST /api/ai/analysis
+  API->>Catalog: resolve selected model
+  API->>Agent: analyze request
+  Agent->>Market: fetch quote
+  Agent->>LLM: structured prompt
+  LLM-->>Agent: JSON-like model output
+  Agent->>Agent: parse DTO and enforce compliance
+  Agent->>Billing: record token usage
+  Agent->>Audit: record analysis event
+  Agent-->>Web: InvestmentAnalysisResponse
+```
 
 ## 结构化输出草案
 
 ```json
 {
-  "taskId": "uuid",
-  "agent": "RiskAgent",
-  "status": "COMPLETED",
-  "dataSources": [
-    {
-      "name": "mock-market-data",
-      "asOf": "2026-07-05T00:00:00Z"
-    }
-  ],
-  "assumptions": [
-    "用户未提供完整风险偏好，默认不生成强个性化建议"
-  ],
-  "findings": [
-    {
-      "title": "持仓集中度偏高",
-      "severity": "MEDIUM",
-      "evidence": "单一资产占比超过 40%"
-    }
-  ],
-  "recommendations": [
-    {
-      "type": "OPTIONAL_ACTION",
-      "content": "可评估分批再平衡，但需结合税费、流动性和个人投资期限",
-      "confidence": 0.62
-    }
-  ],
-  "requiredDisclosures": [
-    "本内容仅用于辅助分析和教育性解释，不构成投资建议",
-    "历史表现不代表未来收益"
-  ],
-  "humanApprovalRequired": true
+  "analysisId": 1,
+  "symbol": "AAPL",
+  "model": {
+    "id": "ollama-qwen2.5-3b",
+    "provider": "OLLAMA",
+    "billingMode": "FREE_LOCAL_TOKEN_ACCOUNTING"
+  },
+  "investmentSummary": "Educational analysis summary.",
+  "keyObservations": ["Observation"],
+  "assumptions": ["Assumption"],
+  "riskWarnings": ["Investment involves risk."],
+  "educationalNotes": ["Use this as auxiliary research only."],
+  "confidence": 0.42,
+  "tokenUsage": {
+    "promptTokens": 120,
+    "completionTokens": 80,
+    "totalTokens": 200,
+    "usageSource": "ESTIMATED",
+    "estimatedCost": 0,
+    "currency": "USD",
+    "billable": false
+  },
+  "disclaimer": "This system provides educational explanations only."
 }
 ```
 
@@ -59,7 +77,7 @@
 
 - 生成投资建议或组合再平衡建议。
 - 调用外部付费或受限市场数据接口。
+- 启用 MiniMax 等付费模型给真实用户使用。
 - 运行 Sandbox 脚本或策略回测。
 - 新增、修改、启用 Skill。
 - 推送远程仓库或发布演示环境。
-

@@ -1,7 +1,10 @@
 import type {
   ApiResponse,
   AuthResponse,
+  AiModelDescriptor,
   ComplianceNotice,
+  InvestmentAnalysisPayload,
+  InvestmentAnalysisResponse,
   MarketDataProvider,
   MarketQuote,
   PortfolioSummary,
@@ -150,4 +153,15 @@ export function getMarketQuote(
 ): Promise<ApiResponse<MarketQuote>> {
   const params = new URLSearchParams({ symbol, exchange, currency });
   return getJsonWithToken<ApiResponse<MarketQuote>>(`/api/market-data/quote?${params.toString()}`, token);
+}
+
+export function getAiModels(token: string): Promise<ApiResponse<AiModelDescriptor[]>> {
+  return getJsonWithToken<ApiResponse<AiModelDescriptor[]>>("/api/ai/models", token);
+}
+
+export function requestInvestmentAnalysis(
+  token: string,
+  payload: InvestmentAnalysisPayload
+): Promise<ApiResponse<InvestmentAnalysisResponse>> {
+  return sendJson<ApiResponse<InvestmentAnalysisResponse>>("POST", "/api/ai/analysis", payload, token);
 }

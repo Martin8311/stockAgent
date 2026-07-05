@@ -1,11 +1,13 @@
 import type {
+  AiProviderType,
   AssetType,
   CapitalPurpose,
   ComplianceNotice,
   InvestmentHorizon,
   MarketDataSourceType,
-  TransactionType,
-  RiskPreference
+  RiskPreference,
+  TokenUsageSource,
+  TransactionType
 } from "./types";
 
 export type Language = "en" | "zh";
@@ -27,10 +29,10 @@ export const messages = {
       connecting: "Connecting"
     },
     hero: {
-      eyebrow: "Phase 3 market data foundation",
-      title: "Portfolio workflow with governed mock market data",
+      eyebrow: "Phase 4 AI analysis foundation",
+      title: "Selectable AI models with token accounting",
       body:
-        "The assistant now combines secure identity, portfolio accounting, structured market data abstraction, local mock quotes, provider audit, and investment-risk disclosure.",
+        "The assistant now combines secure identity, portfolio accounting, market data abstraction, local Ollama analysis, MiniMax paid-tier preparation, structured outputs, audit, and token usage records.",
       apiDocs: "API docs",
       serviceHealth: "Service health",
       backendUnavailable: "Backend API unavailable"
@@ -54,7 +56,7 @@ export const messages = {
     },
     pipeline: {
       title: "Delivery pipeline",
-      subtitle: "Identity first",
+      subtitle: "Identity, portfolio, market data, and AI analysis",
       steps: [
         {
           agent: "Identity",
@@ -63,7 +65,7 @@ export const messages = {
         },
         {
           agent: "Audit",
-          description: "Registration, login, disclaimer access, and profile changes are recorded as audit events.",
+          description: "Registration, login, disclaimer access, profile changes, market data, and AI analysis are audited.",
           status: "Ready"
         },
         {
@@ -74,6 +76,11 @@ export const messages = {
         {
           agent: "MarketData",
           description: "Provider abstraction, local mock quotes, source confidence, assumptions, and audit logging.",
+          status: "Ready"
+        },
+        {
+          agent: "AnalysisAgent",
+          description: "Selectable AI models, structured investment analysis, compliance guardrails, and token accounting.",
           status: "Ready"
         },
         {
@@ -154,6 +161,41 @@ export const messages = {
       noQuote: "No quote loaded yet.",
       fetched: "Quote loaded."
     },
+    ai: {
+      title: "AI investment analysis",
+      subtitle: "Phase 4 selectable model, structured output, and token billing baseline",
+      formTitle: "Run analysis",
+      model: "Model",
+      symbol: "Symbol",
+      exchange: "Exchange",
+      currency: "Currency",
+      question: "Question",
+      includePortfolio: "Include portfolio context",
+      submit: "Run analysis",
+      running: "Analyzing...",
+      completed: "Analysis completed.",
+      modelCatalog: "Model catalog",
+      localFree: "Local free",
+      paidReserved: "Paid reserved",
+      testFree: "Test free",
+      apiKeyRequired: "API key",
+      enabled: "Enabled",
+      disabled: "Disabled",
+      noAnalysis: "No AI analysis yet.",
+      summary: "Summary",
+      observations: "Key observations",
+      assumptions: "Assumptions",
+      educationalNotes: "Educational notes",
+      riskWarnings: "Risk warnings",
+      tokenUsage: "Token usage",
+      promptTokens: "Prompt",
+      completionTokens: "Completion",
+      totalTokens: "Total",
+      estimatedCost: "Estimated cost",
+      usageSource: "Usage source",
+      confidence: "Confidence",
+      disclaimer: "Disclaimer"
+    },
     errors: {
       unknownApi: "Unknown API error"
     }
@@ -172,10 +214,10 @@ export const messages = {
       connecting: "连接中"
     },
     hero: {
-      eyebrow: "阶段 3：市场数据基础",
-      title: "带受控 Mock 行情的持仓工作流",
+      eyebrow: "阶段 4：AI 分析基础",
+      title: "可选模型与 token 计费的智能分析",
       body:
-        "当前系统已组合安全身份、持仓账本、结构化市场数据抽象、本地 Mock 行情、数据源审计和投资风险提示。",
+        "当前系统已组合安全身份、持仓账本、市场数据抽象、本地 Ollama 分析、MiniMax 付费通道预留、结构化输出、审计和 token 使用记录。",
       apiDocs: "接口文档",
       serviceHealth: "服务健康",
       backendUnavailable: "后端 API 不可用"
@@ -199,7 +241,7 @@ export const messages = {
     },
     pipeline: {
       title: "交付流水线",
-      subtitle: "身份优先",
+      subtitle: "身份、持仓、市场数据与 AI 分析",
       steps: [
         {
           agent: "Identity",
@@ -208,7 +250,7 @@ export const messages = {
         },
         {
           agent: "Audit",
-          description: "注册、登录、免责声明访问和画像修改都会记录为审计事件。",
+          description: "注册、登录、免责声明访问、画像修改、行情请求和 AI 分析都会记录为审计事件。",
           status: "就绪"
         },
         {
@@ -219,6 +261,11 @@ export const messages = {
         {
           agent: "MarketData",
           description: "数据源抽象、本地 Mock 行情、来源置信度、假设说明和审计日志已经接入。",
+          status: "就绪"
+        },
+        {
+          agent: "AnalysisAgent",
+          description: "可选择 AI 模型、结构化投资分析、合规兜底和 token 计费记录已经接入。",
           status: "就绪"
         },
         {
@@ -297,6 +344,41 @@ export const messages = {
       approvalRequired: "需要审批",
       noQuote: "尚未加载行情。",
       fetched: "行情已加载。"
+    },
+    ai: {
+      title: "AI 投资分析",
+      subtitle: "阶段 4：可选模型、结构化输出与 token 计费基线",
+      formTitle: "运行分析",
+      model: "模型",
+      symbol: "代码",
+      exchange: "交易所",
+      currency: "币种",
+      question: "问题",
+      includePortfolio: "包含持仓上下文",
+      submit: "运行分析",
+      running: "分析中...",
+      completed: "分析已完成。",
+      modelCatalog: "模型目录",
+      localFree: "本地免费",
+      paidReserved: "付费预留",
+      testFree: "测试免费",
+      apiKeyRequired: "需要 API Key",
+      enabled: "已启用",
+      disabled: "未启用",
+      noAnalysis: "尚未生成 AI 分析。",
+      summary: "摘要",
+      observations: "关键观察",
+      assumptions: "假设",
+      educationalNotes: "教育性说明",
+      riskWarnings: "风险提示",
+      tokenUsage: "Token 使用",
+      promptTokens: "Prompt",
+      completionTokens: "Completion",
+      totalTokens: "总计",
+      estimatedCost: "预估费用",
+      usageSource: "用量来源",
+      confidence: "置信度",
+      disclaimer: "免责声明"
     },
     errors: {
       unknownApi: "未知 API 错误"
@@ -396,6 +478,30 @@ const marketDataSourceLabels: Record<Language, Record<MarketDataSourceType, stri
   }
 };
 
+const aiProviderLabels: Record<Language, Record<AiProviderType, string>> = {
+  en: {
+    OLLAMA: "Ollama",
+    MINIMAX: "MiniMax"
+  },
+  zh: {
+    OLLAMA: "Ollama 本地模型",
+    MINIMAX: "MiniMax"
+  }
+};
+
+const tokenUsageSourceLabels: Record<Language, Record<TokenUsageSource, string>> = {
+  en: {
+    ACTUAL: "Actual",
+    ESTIMATED: "Estimated",
+    MOCK: "Mock"
+  },
+  zh: {
+    ACTUAL: "实际返回",
+    ESTIMATED: "估算",
+    MOCK: "Mock"
+  }
+};
+
 const zhComplianceNotice: ComplianceNotice = {
   title: "投资研究合规提示",
   allowedUse: "本系统仅提供教育性解释、辅助分析和风险提醒。",
@@ -434,6 +540,14 @@ export function getTransactionTypeLabel(language: Language, value: TransactionTy
 
 export function getMarketDataSourceLabel(language: Language, value: MarketDataSourceType): string {
   return marketDataSourceLabels[language][value];
+}
+
+export function getAiProviderLabel(language: Language, value: AiProviderType): string {
+  return aiProviderLabels[language][value];
+}
+
+export function getTokenUsageSourceLabel(language: Language, value: TokenUsageSource): string {
+  return tokenUsageSourceLabels[language][value];
 }
 
 export function localizePortfolioRiskWarnings(language: Language, warnings: string[]): string[] {

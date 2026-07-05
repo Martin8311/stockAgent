@@ -18,6 +18,12 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+  ai:
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      chat:
+        options:
+          model: ${OLLAMA_MODEL:qwen2.5:3b}
 
 management:
   endpoints:
@@ -53,3 +59,27 @@ app:
     external-enabled: false
     mock-provider-name: local-mock-market-data
     external-provider-name: external-adapter-placeholder
+  ai:
+    test-mode: ${AI_TEST_MODE:false}
+    mock-responses-enabled: ${AI_MOCK_RESPONSES:false}
+    paid-access-enabled: ${AI_PAID_ACCESS_ENABLED:false}
+    default-model-id: ${AI_DEFAULT_MODEL_ID:ollama-qwen2.5-3b}
+    ollama:
+      enabled: ${OLLAMA_ENABLED:true}
+      model-id: ollama-qwen2.5-3b
+      display-name: "Local Ollama Qwen2.5 3B"
+      model: ${OLLAMA_MODEL:qwen2.5:3b}
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      currency: USD
+      prompt-price-per-million-tokens: 0.000000
+      completion-price-per-million-tokens: 0.000000
+    minimax:
+      enabled: ${MINIMAX_ENABLED:true}
+      model-id: minimax-chat
+      display-name: "MiniMax paid model"
+      model: ${MINIMAX_MODEL:MiniMax-Text-01}
+      base-url: ${MINIMAX_BASE_URL:https://api.minimax.chat/v1/chat/completions}
+      api-key: ${MINIMAX_API_KEY:}
+      currency: USD
+      prompt-price-per-million-tokens: ${MINIMAX_PROMPT_PRICE_PER_MILLION_TOKENS:0.000000}
+      completion-price-per-million-tokens: ${MINIMAX_COMPLETION_PRICE_PER_MILLION_TOKENS:0.000000}

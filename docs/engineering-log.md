@@ -1,5 +1,62 @@
 # Engineering Log
 
+## 阶段 4：Spring AI、模型选择与 token 计费
+
+### Spring AI 版本要跟 Spring Boot 版本对齐
+
+- 阶段：4
+- 现象：项目使用 Spring Boot 3.5.x，而 Spring AI 最新主线可能面向更新的 Spring Boot 版本。
+- 影响：如果盲目引入最新 Spring AI，容易出现依赖树不兼容、自动配置失败或 API 签名不匹配。
+- 原因：Spring AI 仍在快速演进，starter、自动配置属性和 ChatModel API 都有版本差异。
+- 定位过程：先检查本地 Maven 缓存，确认已有 `spring-ai-bom`、`spring-ai-starter-model-ollama`、`spring-ai-model` 的 1.0.9 版本，再用后端测试验证 Spring Boot 3.5.3 可正常加载上下文。
+- 解决方案：阶段 4 固定使用 Spring AI 1.0.9，并把 Ollama 作为官方 Spring AI 接入口；MiniMax starter 本地未缓存，因此先做 HTTP/OpenAI-compatible 适配层，后续可替换为官方 starter。
+- 验证方式：`mvn test` 通过，AI Controller、Flyway V4、JPA、Security 和 MockMvc 测试全部成功。
+- 面试表达：AI 工程不是只调一个模型 API，首先要处理框架版本、自动配置、依赖可用性和可替换边界，否则项目会被供应商 SDK 或版本冲突拖住。
+
+### 免费本地模型和付费模型需要统一模型目录
+
+- 阶段：4
+- 现象：用户希望本地 Ollama Qwen2.5 3B 免费提供服务，同时 MiniMax 作为付费用户能力预留，并且用户可以选择模型。
+- 影响：如果直接在前端写死模型，后续加套餐、审批、灰度和禁用模型都会很难。
+- 原因：模型不仅是调用地址，还包含 provider、启用状态、是否本地、是否免费、是否需要 API Key、计费模式和状态说明。
+- 定位过程：抽象出 `/api/ai/models`，让后端返回模型目录，由后端决定模型是否可用。
+- 解决方案：新增 `AiModelCatalog` 和 `AiModelDescriptor`。Ollama 默认免费可用；MiniMax 只有在 `MINIMAX_API_KEY` 存在，并且 `AI_TEST_MODE=true` 或 `AI_PAID_ACCESS_ENABLED=true` 时才启用。
+- 验证方式：`AiAnalysisControllerTest` 断言模型目录返回 Ollama 和 MiniMax，并带有 freeTier、paidTier、testModeFree 等计费元数据。
+- 面试表达：我把“模型选择”设计成后端模型目录，而不是前端枚举。这样可以把计费、权限、灰度、供应商状态和审批策略集中在服务端治理。
+
+### token 计费先做记录，不急着做扣费
+
+- 阶段：4
+- 现象：用户要求采用 token 计费模式，但当前还没有用户余额、套餐、支付订单和账单系统。
+- 影响：如果直接做扣费，会引入支付、幂等、退款、余额并发等大量复杂度，超出阶段 4 目标。
+- 原因：计费系统应该先有可信用量记录，余额扣减可以在后续付费模块中基于用量记录演进。
+- 定位过程：拆分“用量记录”和“资金扣减”两个职责，本阶段只落 `ai_token_usage_record`。
+- 解决方案：记录 prompt tokens、completion tokens、total tokens、usageSource、estimatedCost、currency、billable、testMode。真实供应商价格不硬编码，通过环境变量注入。
+- 验证方式：AI 分析测试断言 tokenUsage 返回 totalTokens、usageSource=MOCK、testMode=true；Flyway V4 创建分析任务和 token 用量表。
+- 面试表达：token 计费的第一步不是收钱，而是建立可审计、可重放、可对账的 usage ledger。这样后面接套餐和支付时有可靠事实源。
+
+### AI 输出必须服务端合规兜底
+
+- 阶段：4
+- 现象：模型可能输出“必买”“保证收益”等不合规内容，或者不按 JSON 结构返回。
+- 影响：投资助手如果直接透传模型文本，会带来金融合规风险，也会破坏前端结构化展示和审计能力。
+- 原因：LLM 输出天然不稳定，需要后端在模型之后做结构化解析、兜底包装和合规后处理。
+- 定位过程：把 prompt 约束、JSON 解析、fallback 包装、禁止用语替换、风险提示补齐放在 `InvestmentAnalysisService`。
+- 解决方案：模型返回内容先解析为 `InvestmentAnalysisContent`，解析失败则包装成低置信度结构化响应；服务端追加行情风险、合规 required warnings 和用户画像缺口提示。
+- 验证方式：AI 分析接口测试断言返回结构化 summary、riskWarnings、disclaimer 和 tokenUsage。
+- 面试表达：金融场景不能把 LLM 当最终裁判。我的设计是“模型生成候选内容，服务端负责合规收口”，这样才能审计和治理。
+
+### 测试不能依赖本地 Ollama 或外部 MiniMax
+
+- 阶段：4
+- 现象：阶段 4 引入模型调用后，自动化测试如果真实访问 Ollama 或 MiniMax，会依赖本机服务、网络和 API Key。
+- 影响：CI 和本地测试会不稳定，甚至可能产生外部费用。
+- 原因：模型调用属于外部依赖，必须和业务编排测试解耦。
+- 定位过程：测试只需要验证模型选择、结构化响应、计费记录和审计链路，不需要验证真实模型质量。
+- 解决方案：`application-test.yml` 开启 `AI_MOCK_RESPONSES=true` 和 `AI_TEST_MODE=true`，使用确定性响应，同时仍走完整 service/controller/billing/audit 流程。
+- 验证方式：后端 `mvn test` 通过 16 个测试，不需要本地 Ollama 运行，也不需要 MiniMax API Key。
+- 面试表达：我把“模型质量验证”和“业务流程验证”分开。单元/集成测试验证系统稳定性，真实模型效果留给人工评估、回归样例和后续评测集。
+
 本文件持续记录项目开发过程中遇到的问题、坑点、难点、原因、定位过程和解决方案。目标是沉淀可复盘的工程经验，方便后续写简历、准备面试和做项目演示。
 
 ## 记录模板

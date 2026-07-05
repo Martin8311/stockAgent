@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import "./App.css";
 import {
   deletePortfolioTransaction,
+  getAiModels,
   getComplianceNotice,
   getCurrentUser,
   getMarketDataProviders,
@@ -12,15 +13,18 @@ import {
   login,
   recordPortfolioTransaction,
   register,
+  requestInvestmentAnalysis,
   updateCurrentUserProfile
 } from "./api";
 import {
+  getAiProviderLabel,
   getAssetTypeLabel,
   getCapitalPurposeLabel,
   getInvestmentHorizonLabel,
   getLocalizedComplianceNotice,
   getMarketDataSourceLabel,
   getRiskPreferenceLabel,
+  getTokenUsageSourceLabel,
   getTransactionTypeLabel,
   LANGUAGE_STORAGE_KEY,
   localizeMarketDataText,
@@ -30,9 +34,11 @@ import {
   type Language
 } from "./i18n";
 import type {
+  AiModelDescriptor,
   AuthResponse,
   CapitalPurpose,
   ComplianceNotice,
+  InvestmentAnalysisResponse,
   InvestmentHorizon,
   MarketDataProvider,
   MarketQuote,
@@ -83,6 +89,18 @@ function App() {
   const [quoteSymbol, setQuoteSymbol] = useState("AAPL");
   const [quoteExchange, setQuoteExchange] = useState("NASDAQ");
   const [quoteCurrency, setQuoteCurrency] = useState("USD");
+  const [aiModels, setAiModels] = useState<AiModelDescriptor[]>([]);
+  const [selectedModelId, setSelectedModelId] = useState("");
+  const [analysisResult, setAnalysisResult] = useState<InvestmentAnalysisResponse | null>(null);
+  const [analysisMessage, setAnalysisMessage] = useState<string | null>(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisSymbol, setAnalysisSymbol] = useState("AAPL");
+  const [analysisExchange, setAnalysisExchange] = useState("NASDAQ");
+  const [analysisCurrency, setAnalysisCurrency] = useState("USD");
+  const [analysisQuestion, setAnalysisQuestion] = useState(
+    "Explain the key assumptions, risks, and portfolio considerations for this asset."
+  );
+  const [includePortfolioContext, setIncludePortfolioContext] = useState(true);
   const [symbol, setSymbol] = useState("AAPL");
   const [assetName, setAssetName] = useState("Apple Inc.");
   const [assetType, setAssetType] = useState<AssetType>("STOCK");
@@ -109,6 +127,10 @@ function App() {
   const marketWarnings = useMemo(
     () => localizeMarketDataText(language, marketQuote?.riskWarnings ?? []),
     [language, marketQuote]
+  );
+  const selectedModel = useMemo(
+    () => aiModels.find((model) => model.id === selectedModelId) ?? null,
+    [aiModels, selectedModelId]
   );
 
   useEffect(() => {
@@ -150,6 +172,7 @@ function App() {
         setCapitalPurpose(response.data.capitalPurpose);
         loadPortfolio(token);
         loadMarketProviders(token);
+        loadAiModels(token);
       })
       .catch(() => {
         localStorage.removeItem(TOKEN_STORAGE_KEY);
@@ -159,6 +182,8 @@ function App() {
         setTransactions([]);
         setMarketProviders([]);
         setMarketQuote(null);
+        setAiModels([]);
+        setAnalysisResult(null);
       });
   }, [token]);
 
@@ -248,6 +273,17 @@ function App() {
     setMarketProviders(response.data);
   }
 
+  async function loadAiModels(activeToken: string) {
+    const response = await getAiModels(activeToken);
+    setAiModels(response.data);
+    setSelectedModelId((currentModelId) => {
+      if (currentModelId && response.data.some((model) => model.id === currentModelId && model.enabled)) {
+        return currentModelId;
+      }
+      return response.data.find((model) => model.enabled)?.id ?? response.data[0]?.id ?? "";
+    });
+  }
+
   async function handleQuoteSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!token) {
@@ -260,6 +296,31 @@ function App() {
       setMarketMessage(t.marketData.fetched);
     } catch (requestError) {
       setMarketMessage(requestError instanceof Error ? requestError.message : t.errors.unknownApi);
+    }
+  }
+
+  async function handleAnalysisSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!token) {
+      return;
+    }
+    setAnalysisMessage(null);
+    setAnalysisLoading(true);
+    try {
+      const response = await requestInvestmentAnalysis(token, {
+        modelId: selectedModelId,
+        symbol: analysisSymbol,
+        exchange: analysisExchange,
+        currency: analysisCurrency,
+        question: analysisQuestion,
+        includePortfolioContext
+      });
+      setAnalysisResult(response.data);
+      setAnalysisMessage(t.ai.completed);
+    } catch (requestError) {
+      setAnalysisMessage(requestError instanceof Error ? requestError.message : t.errors.unknownApi);
+    } finally {
+      setAnalysisLoading(false);
     }
   }
 
@@ -276,6 +337,8 @@ function App() {
     setTransactions([]);
     setMarketProviders([]);
     setMarketQuote(null);
+    setAiModels([]);
+    setAnalysisResult(null);
     setAuthMessage(t.auth.signedOut);
   }
 
@@ -612,6 +675,174 @@ function App() {
                         {provider.enabled ? t.marketData.enabled : t.marketData.disabled}
                       </span>
                       {provider.requiresApproval && <span className="step-tag">{t.marketData.approvalRequired}</span>}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {profile && (
+          <section className="section-panel ai-workspace">
+            <div className="section-heading">
+              <div>
+                <h2>{t.ai.title}</h2>
+                <span>{t.ai.subtitle}</span>
+              </div>
+            </div>
+
+            <div className="ai-grid">
+              <form className="ai-analysis-form" onSubmit={handleAnalysisSubmit}>
+                <h3>{t.ai.formTitle}</h3>
+                <label>
+                  {t.ai.model}
+                  <select value={selectedModelId} onChange={(event) => setSelectedModelId(event.target.value)}>
+                    {aiModels.map((model) => (
+                      <option key={model.id} value={model.id} disabled={!model.enabled}>
+                        {model.displayName} ({getAiProviderLabel(language, model.provider)})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  {t.ai.symbol}
+                  <input value={analysisSymbol} onChange={(event) => setAnalysisSymbol(event.target.value)} />
+                </label>
+                <label>
+                  {t.ai.exchange}
+                  <input value={analysisExchange} onChange={(event) => setAnalysisExchange(event.target.value)} />
+                </label>
+                <label>
+                  {t.ai.currency}
+                  <input value={analysisCurrency} onChange={(event) => setAnalysisCurrency(event.target.value)} />
+                </label>
+                <label className="wide-field">
+                  {t.ai.question}
+                  <textarea value={analysisQuestion} onChange={(event) => setAnalysisQuestion(event.target.value)} />
+                </label>
+                <label className="checkbox-field wide-field">
+                  <input
+                    type="checkbox"
+                    checked={includePortfolioContext}
+                    onChange={(event) => setIncludePortfolioContext(event.target.checked)}
+                  />
+                  <span>{t.ai.includePortfolio}</span>
+                </label>
+                <button className="primary-action" type="submit" disabled={analysisLoading || !selectedModel?.enabled}>
+                  {analysisLoading ? t.ai.running : t.ai.submit}
+                </button>
+                {analysisMessage && <div className="inline-message">{analysisMessage}</div>}
+              </form>
+
+              <div className="ai-analysis-card">
+                {analysisResult ? (
+                  <>
+                    <div className="quote-heading">
+                      <div>
+                        <strong>{analysisResult.symbol}</strong>
+                        <span>
+                          {analysisResult.exchange} · {analysisResult.currency}
+                        </span>
+                      </div>
+                      <span className="step-tag">{getAiProviderLabel(language, analysisResult.model.provider)}</span>
+                    </div>
+                    <div className="summary-metrics ai-metrics">
+                      <div>
+                        <span>{t.ai.confidence}</span>
+                        <strong>{formatPercent(analysisResult.confidence)}</strong>
+                      </div>
+                      <div>
+                        <span>{t.ai.totalTokens}</span>
+                        <strong>{formatNumber(analysisResult.tokenUsage.totalTokens)}</strong>
+                      </div>
+                      <div>
+                        <span>{t.ai.usageSource}</span>
+                        <strong>{getTokenUsageSourceLabel(language, analysisResult.tokenUsage.usageSource)}</strong>
+                      </div>
+                      <div>
+                        <span>{t.ai.estimatedCost}</span>
+                        <strong>
+                          {formatMoney(
+                            analysisResult.tokenUsage.estimatedCost,
+                            analysisResult.tokenUsage.currency
+                          )}
+                        </strong>
+                      </div>
+                    </div>
+                    <div className="analysis-summary">
+                      <strong>{t.ai.summary}</strong>
+                      <p>{analysisResult.investmentSummary}</p>
+                    </div>
+                    <div className="token-ledger">
+                      <span>
+                        {t.ai.promptTokens}: {formatNumber(analysisResult.tokenUsage.promptTokens)}
+                      </span>
+                      <span>
+                        {t.ai.completionTokens}: {formatNumber(analysisResult.tokenUsage.completionTokens)}
+                      </span>
+                      <span>{analysisResult.model.billingMode}</span>
+                    </div>
+                    <div className="analysis-lists">
+                      <div className="risk-note-list">
+                        <strong>{t.ai.observations}</strong>
+                        <ul>
+                          {analysisResult.keyObservations.map((line) => (
+                            <li key={line}>{line}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="risk-note-list">
+                        <strong>{t.ai.assumptions}</strong>
+                        <ul>
+                          {analysisResult.assumptions.map((line) => (
+                            <li key={line}>{line}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="risk-note-list">
+                        <strong>{t.ai.riskWarnings}</strong>
+                        <ul>
+                          {analysisResult.riskWarnings.map((line) => (
+                            <li key={line}>{line}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="risk-note-list">
+                        <strong>{t.ai.educationalNotes}</strong>
+                        <ul>
+                          {analysisResult.educationalNotes.map((line) => (
+                            <li key={line}>{line}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                    <div className="inline-message">
+                      {t.ai.disclaimer}: {analysisResult.disclaimer}
+                    </div>
+                  </>
+                ) : (
+                  <div className="empty-state">{t.ai.noAnalysis}</div>
+                )}
+              </div>
+
+              <div className="provider-list">
+                <h3>{t.ai.modelCatalog}</h3>
+                {aiModels.map((model) => (
+                  <article className="provider-row" key={model.id}>
+                    <div>
+                      <strong>{model.displayName}</strong>
+                      <span>
+                        {getAiProviderLabel(language, model.provider)} / {model.modelName} / {model.billingMode}
+                      </span>
+                      <span>{model.statusNote}</span>
+                    </div>
+                    <div className="provider-tags">
+                      <span className="step-tag">{model.enabled ? t.ai.enabled : t.ai.disabled}</span>
+                      {model.local && <span className="step-tag">{t.ai.localFree}</span>}
+                      {model.paidTier && <span className="step-tag">{t.ai.paidReserved}</span>}
+                      {model.testModeFree && <span className="step-tag">{t.ai.testFree}</span>}
+                      {model.requiresApiKey && <span className="step-tag">{t.ai.apiKeyRequired}</span>}
                     </div>
                   </article>
                 ))}

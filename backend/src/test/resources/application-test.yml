@@ -22,3 +22,19 @@ app:
     required-warnings:
       - "Investment involves risk."
       - "Historical performance does not guarantee future results."
+  ai:
+    test-mode: true
+    mock-responses-enabled: true
+    paid-access-enabled: true
+    default-model-id: ollama-qwen2.5-3b
+    ollama:
+      enabled: true
+      model-id: ollama-qwen2.5-3b
+      display-name: "Test Ollama Qwen2.5 3B"
+      model: qwen2.5:3b
+    minimax:
+      enabled: true
+      api-key: test-minimax-key
+      model-id: minimax-chat
+      display-name: "Test MiniMax"
+      model: MiniMax-Text-01

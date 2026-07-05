@@ -2,8 +2,8 @@
 
 ## 阶段 0：项目初始化
 
-- 建立 Spring Boot 后端、React 前端、Docker Compose MySQL、README 和核心设计文档。
-- 提供公共健康检查、合规免责声明 API、审计事件基线表。
+- 已建立 Spring Boot 后端、React 前端、Docker Compose MySQL、README 和核心设计文档。
+- 已提供公共健康检查、合规免责声明 API、审计事件基线表。
 
 ## 阶段 1：用户认证与权限
 
@@ -22,18 +22,22 @@
 - 已实现市场数据 Provider 抽象接口。
 - 已实现本地 mock 数据源、结构化 quote、来源置信度、假设和风险提示。
 - 已预留外部数据源适配器开关，默认禁用，后续接入前需要 API Key、限流、缓存、审计和人工审批。
-- 已将组合摘要估值接入 MarketDataService，mock quote 不可用时回落到交易价。
+- 已将组合摘要估值接入 `MarketDataService`，mock quote 不可用时回落到资产本地价格。
 
 ## 阶段 4：Spring AI 基础分析 Agent
 
-- 接入 Spring AI。
-- 定义投资分析 Prompt、结构化 DTO、风险提示模板。
-- 输出假设、数据来源、置信度和免责声明。
+- 已接入 Spring AI Ollama starter，默认支持本地 `qwen2.5:3b` 免费模型。
+- 已预留 MiniMax HTTP/OpenAI-compatible 适配通道，通过 `MINIMAX_API_KEY`、`AI_TEST_MODE`、`AI_PAID_ACCESS_ENABLED` 控制启用。
+- 已实现 `/api/ai/models` 模型目录，返回模型启用状态、免费/付费属性、计费模式和状态说明。
+- 已实现 `/api/ai/analysis` 结构化投资分析，输出 summary、observations、assumptions、riskWarnings、educationalNotes、confidence、quote、tokenUsage。
+- 已持久化 AI analysis task 和 token usage record，并写入审计事件。
+- 已在前端提供模型选择、分析表单、报告卡片和 token 计费摘要。
 
 ## 阶段 5：Multi-agent 编排
 
-- SupervisorAgent 编排 MarketDataAgent、PortfolioAgent、RiskAgent、StrategyAgent、ComplianceAgent。
+- `SupervisorAgent` 编排 `MarketDataAgent`、`PortfolioAgent`、`RiskAgent`、`StrategyAgent`、`ComplianceAgent`。
 - Agent 结果可审计、可回放、可测试。
+- 对高风险输出引入人工介入和审批状态。
 
 ## 阶段 6：Sandbox 执行
 
@@ -43,7 +47,7 @@
 ## 阶段 7：Skill 管理
 
 - Skill 版本管理、测试、审批、启用/回滚。
-- 禁止未审批 Skill 影响生产分析流程。
+- 禁止未经审批的 Skill 影响生产分析流程。
 
 ## 阶段 8：前端仪表盘
 

@@ -359,6 +359,10 @@ h1 {
   margin-top: 24px;
 }
 
+.ai-workspace {
+  margin-top: 24px;
+}
+
 .profile-form {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: end;
@@ -447,6 +451,12 @@ h1 {
   gap: 20px;
 }
 
+.ai-grid {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.75fr) minmax(0, 1fr);
+  gap: 20px;
+}
+
 .portfolio-form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -467,10 +477,23 @@ h1 {
   background: #fbfffd;
 }
 
+.ai-analysis-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-content: start;
+  padding: 18px;
+  border: 1px solid #deece8;
+  border-radius: 8px;
+  background: #fbfffd;
+}
+
 .portfolio-form h3,
 .portfolio-summary h3,
 .market-quote-form h3,
 .market-quote-card h3,
+.ai-analysis-form h3,
+.ai-analysis-card h3,
 .provider-list h3,
 .portfolio-lists h3 {
   margin: 0;
@@ -480,6 +503,9 @@ h1 {
 .portfolio-form h3,
 .portfolio-form .primary-action,
 .portfolio-form .inline-message,
+.ai-analysis-form h3,
+.ai-analysis-form .primary-action,
+.ai-analysis-form .inline-message,
 .wide-field {
   grid-column: 1 / -1;
 }
@@ -498,6 +524,26 @@ h1 {
   color: #547069;
   font-size: 13px;
   font-weight: 800;
+}
+
+.ai-analysis-form label {
+  display: grid;
+  gap: 6px;
+  color: #547069;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.checkbox-field {
+  display: flex !important;
+  align-items: center;
+  grid-template-columns: none !important;
+  gap: 10px;
+}
+
+.checkbox-field input {
+  width: 16px !important;
+  min-height: 16px !important;
 }
 
 .portfolio-form input,
@@ -521,6 +567,29 @@ h1 {
   padding: 0 10px;
 }
 
+.ai-analysis-form input,
+.ai-analysis-form select,
+.ai-analysis-form textarea {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid #bfded6;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #163331;
+  padding: 0 10px;
+}
+
+.ai-analysis-form textarea {
+  min-height: 104px;
+  padding: 10px;
+  resize: vertical;
+}
+
+.primary-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .portfolio-summary {
   display: grid;
   gap: 16px;
@@ -531,6 +600,15 @@ h1 {
 }
 
 .market-quote-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid #deece8;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.ai-analysis-card {
   display: grid;
   gap: 14px;
   padding: 18px;
@@ -591,6 +669,44 @@ h1 {
 
 .quote-metrics {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.ai-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.analysis-summary {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #deece8;
+  border-radius: 8px;
+  background: #fbfffd;
+}
+
+.analysis-summary p {
+  color: #547069;
+  line-height: 1.6;
+}
+
+.token-ledger {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.token-ledger span {
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: #f2fbf8;
+  color: #547069;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.analysis-lists {
+  display: grid;
+  gap: 12px;
 }
 
 .risk-note-list {
@@ -755,8 +871,10 @@ tr:last-child td {
 
   .portfolio-grid,
   .market-data-grid,
+  .ai-grid,
   .summary-metrics,
-  .portfolio-form {
+  .portfolio-form,
+  .ai-analysis-form {
     grid-template-columns: 1fr;
   }
 
