@@ -8,6 +8,16 @@ import {
   register,
   updateCurrentUserProfile
 } from "./api";
+import {
+  getCapitalPurposeLabel,
+  getInvestmentHorizonLabel,
+  getLocalizedComplianceNotice,
+  getRiskPreferenceLabel,
+  LANGUAGE_STORAGE_KEY,
+  messages,
+  normalizeLanguage,
+  type Language
+} from "./i18n";
 import type {
   AuthResponse,
   CapitalPurpose,
@@ -24,6 +34,9 @@ type AuthMode = "login" | "register";
 const TOKEN_STORAGE_KEY = "harness_agent_token";
 
 function App() {
+  const [language, setLanguage] = useState<Language>(() =>
+    normalizeLanguage(localStorage.getItem(LANGUAGE_STORAGE_KEY))
+  );
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [health, setHealth] = useState<SystemHealth | null>(null);
   const [notice, setNotice] = useState<ComplianceNotice | null>(null);
@@ -39,31 +52,9 @@ function App() {
   const [investmentHorizon, setInvestmentHorizon] = useState<InvestmentHorizon>("UNKNOWN");
   const [capitalPurpose, setCapitalPurpose] = useState<CapitalPurpose>("UNKNOWN");
 
-  const pipeline = useMemo(
-    () => [
-      {
-        agent: "Identity",
-        description: "User registration, password hashing, bearer token authentication, and role checks.",
-        status: "Ready"
-      },
-      {
-        agent: "Audit",
-        description: "Registration, login, disclaimer access, and profile changes are recorded as audit events.",
-        status: "Ready"
-      },
-      {
-        agent: "PortfolioAgent",
-        description: "Holdings and portfolio analysis begin in the next delivery phase.",
-        status: "Next"
-      },
-      {
-        agent: "ComplianceAgent",
-        description: "Investment outputs remain constrained by risk disclosure and suitability context.",
-        status: "Baseline"
-      }
-    ],
-    []
-  );
+  const t = messages[language];
+  const pipeline = useMemo(() => t.pipeline.steps, [t]);
+  const localizedNotice = useMemo(() => getLocalizedComplianceNotice(language, notice), [language, notice]);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,14 +72,14 @@ function App() {
         if (cancelled) {
           return;
         }
-        setError(requestError instanceof Error ? requestError.message : "Unknown API error");
+        setError(requestError instanceof Error ? requestError.message : t.errors.unknownApi);
         setLoadState("error");
       });
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t.errors.unknownApi]);
 
   useEffect(() => {
     if (!token) {
@@ -121,9 +112,9 @@ function App() {
           ? await register({ email, password, displayName })
           : await login({ email, password });
       applyAuth(response.data);
-      setAuthMessage(authMode === "register" ? "Registered and signed in." : "Signed in.");
+      setAuthMessage(authMode === "register" ? t.auth.registeredAndSignedIn : t.auth.signedInMessage);
     } catch (requestError) {
-      setAuthMessage(requestError instanceof Error ? requestError.message : "Authentication failed");
+      setAuthMessage(requestError instanceof Error ? requestError.message : t.auth.failed);
     }
   }
 
@@ -138,7 +129,7 @@ function App() {
       capitalPurpose
     });
     setProfile(response.data);
-    setAuthMessage("Investment profile context updated.");
+    setAuthMessage(t.profile.updated);
   }
 
   function applyAuth(auth: AuthResponse) {
@@ -150,47 +141,70 @@ function App() {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     setToken("");
     setProfile(null);
-    setAuthMessage("Signed out.");
+    setAuthMessage(t.auth.signedOut);
+  }
+
+  function updateLanguage(nextLanguage: Language) {
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
+    setLanguage(nextLanguage);
   }
 
   return (
     <div className="app-shell">
       <header className="top-bar">
         <div className="brand">
-          <strong>Harness Engineering Assistant</strong>
-          <span>Investment research, portfolio workflow, agent governance</span>
+          <strong>{t.brand.title}</strong>
+          <span>{t.brand.subtitle}</span>
         </div>
-        <div className="status-pill" aria-live="polite">
-          <span className="status-dot" />
-          {health ? `${health.phase} ${health.status}` : "Connecting"}
+        <div className="top-actions">
+          <div className="language-toggle" aria-label={t.language.label}>
+            <button
+              type="button"
+              className={language === "en" ? "active" : ""}
+              onClick={() => updateLanguage("en")}
+            >
+              {t.language.english}
+            </button>
+            <button
+              type="button"
+              className={language === "zh" ? "active" : ""}
+              onClick={() => updateLanguage("zh")}
+            >
+              {t.language.chinese}
+            </button>
+          </div>
+          <div className="status-pill" aria-live="polite">
+            <span className="status-dot" />
+            {health ? `${health.phase} ${health.status}` : t.status.connecting}
+          </div>
         </div>
       </header>
 
       <main className="dashboard">
         <section className="hero">
           <div className="hero-copy">
-            <p className="eyebrow">Phase 1 identity foundation</p>
-            <h1>Secure sign-in, profile context, and role-aware workflow baseline</h1>
-            <p>
-              The assistant now supports registration, login, bearer token authentication, role checks,
-              and investment profile context. This creates the trust boundary for portfolio, market data,
-              sandbox, and agent workflows.
-            </p>
+            <p className="eyebrow">{t.hero.eyebrow}</p>
+            <h1>{t.hero.title}</h1>
+            <p>{t.hero.body}</p>
             <div className="actions">
               <a className="primary-action" href="http://localhost:8080/swagger-ui.html">
-                API docs
+                {t.hero.apiDocs}
               </a>
               <a className="secondary-action" href="http://localhost:8080/actuator/health">
-                Service health
+                {t.hero.serviceHealth}
               </a>
             </div>
-            {loadState === "error" && <div className="error-banner">Backend API unavailable: {error}</div>}
+            {loadState === "error" && (
+              <div className="error-banner">
+                {t.hero.backendUnavailable}: {error}
+              </div>
+            )}
           </div>
 
-          <aside className="auth-panel" aria-label="Authentication panel">
+          <aside className="auth-panel" aria-label={t.auth.panelLabel}>
             <div className="section-heading compact">
-              <h2>{profile ? "Signed in" : "Account access"}</h2>
-              {profile && <button onClick={logout}>Sign out</button>}
+              <h2>{profile ? t.auth.signedIn : t.auth.accountAccess}</h2>
+              {profile && <button onClick={logout}>{t.auth.signOut}</button>}
             </div>
 
             {profile ? (
@@ -213,28 +227,28 @@ function App() {
                     className={authMode === "register" ? "active" : ""}
                     onClick={() => setAuthMode("register")}
                   >
-                    Register
+                    {t.auth.register}
                   </button>
                   <button
                     type="button"
                     className={authMode === "login" ? "active" : ""}
                     onClick={() => setAuthMode("login")}
                   >
-                    Login
+                    {t.auth.login}
                   </button>
                 </div>
                 {authMode === "register" && (
                   <label>
-                    Display name
+                    {t.auth.displayName}
                     <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
                   </label>
                 )}
                 <label>
-                  Email
+                  {t.auth.email}
                   <input value={email} onChange={(event) => setEmail(event.target.value)} />
                 </label>
                 <label>
-                  Password
+                  {t.auth.password}
                   <input
                     type="password"
                     value={password}
@@ -242,7 +256,7 @@ function App() {
                   />
                 </label>
                 <button className="primary-action" type="submit">
-                  {authMode === "register" ? "Create account" : "Sign in"}
+                  {authMode === "register" ? t.auth.createAccount : t.auth.signIn}
                 </button>
               </form>
             )}
@@ -253,8 +267,8 @@ function App() {
         <section className="grid">
           <div className="section-panel">
             <div className="section-heading">
-              <h2>Delivery pipeline</h2>
-              <span>Identity first</span>
+              <h2>{t.pipeline.title}</h2>
+              <span>{t.pipeline.subtitle}</span>
             </div>
             <div className="pipeline">
               {pipeline.map((step) => (
@@ -268,15 +282,15 @@ function App() {
           </div>
 
           <aside className="risk-panel">
-            <h2>{notice?.title ?? "Investment risk disclosure"}</h2>
-            {notice ? (
+            <h2>{localizedNotice?.title ?? t.compliance.fallbackTitle}</h2>
+            {localizedNotice ? (
               <ul>
-                {notice.requiredDisclosures.map((warning) => (
+                {localizedNotice.requiredDisclosures.map((warning) => (
                   <li key={warning}>{warning}</li>
                 ))}
               </ul>
             ) : (
-              <div className="empty-state">Loading compliance notice.</div>
+              <div className="empty-state">{t.compliance.loading}</div>
             )}
           </aside>
         </section>
@@ -284,50 +298,52 @@ function App() {
         {profile && (
           <section className="section-panel profile-editor">
             <div className="section-heading">
-              <h2>Investment profile context</h2>
-              <span>Used to avoid unsuitable personalized suggestions</span>
+              <h2>{t.profile.title}</h2>
+              <span>{t.profile.subtitle}</span>
             </div>
             <form className="profile-form" onSubmit={handleProfileSubmit}>
               <label>
-                Risk preference
+                {t.profile.riskPreference}
                 <select
                   value={riskPreference}
                   onChange={(event) => setRiskPreference(event.target.value as RiskPreference)}
                 >
-                  <option value="UNKNOWN">Unknown</option>
-                  <option value="CONSERVATIVE">Conservative</option>
-                  <option value="BALANCED">Balanced</option>
-                  <option value="AGGRESSIVE">Aggressive</option>
+                  <option value="UNKNOWN">{getRiskPreferenceLabel(language, "UNKNOWN")}</option>
+                  <option value="CONSERVATIVE">{getRiskPreferenceLabel(language, "CONSERVATIVE")}</option>
+                  <option value="BALANCED">{getRiskPreferenceLabel(language, "BALANCED")}</option>
+                  <option value="AGGRESSIVE">{getRiskPreferenceLabel(language, "AGGRESSIVE")}</option>
                 </select>
               </label>
               <label>
-                Investment horizon
+                {t.profile.investmentHorizon}
                 <select
                   value={investmentHorizon}
                   onChange={(event) => setInvestmentHorizon(event.target.value as InvestmentHorizon)}
                 >
-                  <option value="UNKNOWN">Unknown</option>
-                  <option value="SHORT_TERM">Short term</option>
-                  <option value="MID_TERM">Mid term</option>
-                  <option value="LONG_TERM">Long term</option>
+                  <option value="UNKNOWN">{getInvestmentHorizonLabel(language, "UNKNOWN")}</option>
+                  <option value="SHORT_TERM">{getInvestmentHorizonLabel(language, "SHORT_TERM")}</option>
+                  <option value="MID_TERM">{getInvestmentHorizonLabel(language, "MID_TERM")}</option>
+                  <option value="LONG_TERM">{getInvestmentHorizonLabel(language, "LONG_TERM")}</option>
                 </select>
               </label>
               <label>
-                Capital purpose
+                {t.profile.capitalPurpose}
                 <select
                   value={capitalPurpose}
                   onChange={(event) => setCapitalPurpose(event.target.value as CapitalPurpose)}
                 >
-                  <option value="UNKNOWN">Unknown</option>
-                  <option value="LIQUIDITY_RESERVE">Liquidity reserve</option>
-                  <option value="EDUCATION">Education</option>
-                  <option value="HOUSE_PURCHASE">House purchase</option>
-                  <option value="RETIREMENT">Retirement</option>
-                  <option value="GENERAL_WEALTH">General wealth</option>
+                  <option value="UNKNOWN">{getCapitalPurposeLabel(language, "UNKNOWN")}</option>
+                  <option value="LIQUIDITY_RESERVE">
+                    {getCapitalPurposeLabel(language, "LIQUIDITY_RESERVE")}
+                  </option>
+                  <option value="EDUCATION">{getCapitalPurposeLabel(language, "EDUCATION")}</option>
+                  <option value="HOUSE_PURCHASE">{getCapitalPurposeLabel(language, "HOUSE_PURCHASE")}</option>
+                  <option value="RETIREMENT">{getCapitalPurposeLabel(language, "RETIREMENT")}</option>
+                  <option value="GENERAL_WEALTH">{getCapitalPurposeLabel(language, "GENERAL_WEALTH")}</option>
                 </select>
               </label>
               <button className="primary-action" type="submit">
-                Save profile
+                {t.profile.save}
               </button>
             </form>
           </section>
