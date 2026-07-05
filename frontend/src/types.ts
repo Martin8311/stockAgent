@@ -31,6 +31,8 @@ export type CapitalPurpose =
   | "HOUSE_PURCHASE"
   | "RETIREMENT"
   | "GENERAL_WEALTH";
+export type AssetType = "STOCK" | "FUND" | "ETF" | "BOND" | "CASH" | "CRYPTO" | "OTHER";
+export type TransactionType = "BUY" | "SELL";
 
 export interface AuthUser {
   id: number;
@@ -74,4 +76,64 @@ export interface UpdateProfilePayload {
   riskPreference: RiskPreference;
   investmentHorizon: InvestmentHorizon;
   capitalPurpose: CapitalPurpose;
+}
+
+export interface PortfolioAsset {
+  id: number;
+  symbol: string;
+  name: string;
+  assetType: AssetType;
+  exchange: string;
+  currency: string;
+  latestPrice: number;
+}
+
+export interface PortfolioTransaction {
+  id: number;
+  asset: PortfolioAsset;
+  transactionType: TransactionType;
+  quantity: number;
+  price: number;
+  fee: number;
+  grossAmount: number;
+  tradedAt: string;
+  note: string | null;
+}
+
+export interface Holding {
+  asset: PortfolioAsset;
+  quantity: number;
+  averageCost: number;
+  costBasis: number;
+  latestPrice: number;
+  marketValue: number;
+  unrealizedPnl: number;
+  unrealizedPnlRatio: number;
+  realizedPnl: number;
+}
+
+export interface PortfolioSummary {
+  totalCostBasis: number;
+  totalMarketValue: number;
+  totalUnrealizedPnl: number;
+  totalUnrealizedPnlRatio: number;
+  totalRealizedPnl: number;
+  holdingCount: number;
+  holdings: Holding[];
+  riskWarnings: string[];
+  disclaimer: string;
+}
+
+export interface PortfolioTransactionPayload {
+  symbol: string;
+  name: string;
+  assetType: AssetType;
+  exchange: string;
+  currency: string;
+  transactionType: TransactionType;
+  quantity: number;
+  price: number;
+  fee: number;
+  tradedAt: string;
+  note: string;
 }

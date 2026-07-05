@@ -1,7 +1,9 @@
 import type {
+  AssetType,
   CapitalPurpose,
   ComplianceNotice,
   InvestmentHorizon,
+  TransactionType,
   RiskPreference
 } from "./types";
 
@@ -88,6 +90,41 @@ export const messages = {
       save: "Save profile",
       updated: "Investment profile context updated."
     },
+    portfolio: {
+      title: "Portfolio workspace",
+      subtitle: "Phase 2 holdings and transaction ledger",
+      summaryTitle: "Portfolio summary",
+      totalMarketValue: "Market value",
+      totalCostBasis: "Cost basis",
+      unrealizedPnl: "Unrealized P/L",
+      realizedPnl: "Realized P/L",
+      holdingCount: "Holdings",
+      formTitle: "Record transaction",
+      symbol: "Symbol",
+      name: "Asset name",
+      assetType: "Asset type",
+      exchange: "Exchange",
+      currency: "Currency",
+      transactionType: "Transaction type",
+      quantity: "Quantity",
+      price: "Price",
+      fee: "Fee",
+      tradedAt: "Trade time",
+      note: "Note",
+      submit: "Save transaction",
+      recorded: "Transaction recorded.",
+      deleted: "Transaction deleted.",
+      holdings: "Holdings",
+      transactions: "Transaction ledger",
+      averageCost: "Avg cost",
+      latestPrice: "Latest price",
+      riskWarnings: "Risk warnings",
+      noHoldings: "No holdings yet.",
+      noTransactions: "No transactions yet.",
+      delete: "Delete",
+      disclaimer:
+        "Portfolio analytics are educational and risk-oriented only. They do not promise returns and do not replace advice from a licensed financial advisor."
+    },
     errors: {
       unknownApi: "Unknown API error"
     }
@@ -170,6 +207,40 @@ export const messages = {
       save: "保存画像",
       updated: "投资画像上下文已更新。"
     },
+    portfolio: {
+      title: "持仓工作台",
+      subtitle: "阶段 2：持仓与交易台账",
+      summaryTitle: "组合摘要",
+      totalMarketValue: "持仓市值",
+      totalCostBasis: "成本金额",
+      unrealizedPnl: "未实现盈亏",
+      realizedPnl: "已实现盈亏",
+      holdingCount: "持仓数",
+      formTitle: "录入交易",
+      symbol: "代码",
+      name: "资产名称",
+      assetType: "资产类型",
+      exchange: "交易所",
+      currency: "币种",
+      transactionType: "交易方向",
+      quantity: "数量",
+      price: "价格",
+      fee: "费用",
+      tradedAt: "交易时间",
+      note: "备注",
+      submit: "保存交易",
+      recorded: "交易已记录。",
+      deleted: "交易已删除。",
+      holdings: "当前持仓",
+      transactions: "交易台账",
+      averageCost: "平均成本",
+      latestPrice: "最新价格",
+      riskWarnings: "风险提示",
+      noHoldings: "暂无持仓。",
+      noTransactions: "暂无交易。",
+      delete: "删除",
+      disclaimer: "组合分析仅用于教育性解释和风险提示，不承诺收益，也不替代持牌金融顾问意见。"
+    },
     errors: {
       unknownApi: "未知 API 错误"
     }
@@ -225,6 +296,38 @@ const capitalPurposeLabels: Record<Language, Record<CapitalPurpose, string>> = {
   }
 };
 
+const assetTypeLabels: Record<Language, Record<AssetType, string>> = {
+  en: {
+    STOCK: "Stock",
+    FUND: "Fund",
+    ETF: "ETF",
+    BOND: "Bond",
+    CASH: "Cash",
+    CRYPTO: "Crypto",
+    OTHER: "Other"
+  },
+  zh: {
+    STOCK: "股票",
+    FUND: "基金",
+    ETF: "ETF",
+    BOND: "债券",
+    CASH: "现金",
+    CRYPTO: "加密资产",
+    OTHER: "其他"
+  }
+};
+
+const transactionTypeLabels: Record<Language, Record<TransactionType, string>> = {
+  en: {
+    BUY: "Buy",
+    SELL: "Sell"
+  },
+  zh: {
+    BUY: "买入",
+    SELL: "卖出"
+  }
+};
+
 const zhComplianceNotice: ComplianceNotice = {
   title: "投资研究合规提示",
   allowedUse: "本系统仅提供教育性解释、辅助分析和风险提醒。",
@@ -251,6 +354,40 @@ export function getInvestmentHorizonLabel(language: Language, value: InvestmentH
 
 export function getCapitalPurposeLabel(language: Language, value: CapitalPurpose): string {
   return capitalPurposeLabels[language][value];
+}
+
+export function getAssetTypeLabel(language: Language, value: AssetType): string {
+  return assetTypeLabels[language][value];
+}
+
+export function getTransactionTypeLabel(language: Language, value: TransactionType): string {
+  return transactionTypeLabels[language][value];
+}
+
+export function localizePortfolioRiskWarnings(language: Language, warnings: string[]): string[] {
+  if (language === "en") {
+    return warnings;
+  }
+
+  return warnings.map((warning) => {
+    if (warning.startsWith("No holdings recorded yet.")) {
+      return "尚未录入持仓，缺少仓位数据时无法评估组合风险。";
+    }
+    if (warning.startsWith("Single-position portfolio detected.")) {
+      return "检测到单一持仓组合，集中度风险可能较高。";
+    }
+    if (warning.includes("is more than 50% of portfolio market value")) {
+      const symbol = warning.split(" ")[0];
+      return `${symbol} 超过组合市值的 50%，请关注集中持仓风险。`;
+    }
+    if (warning.startsWith("Portfolio unrealized loss is greater than 10%")) {
+      return "组合未实现亏损超过成本金额的 10%，请结合风险承受能力和流动性需求复核。";
+    }
+    if (warning.startsWith("Portfolio analytics are educational")) {
+      return messages.zh.portfolio.disclaimer;
+    }
+    return warning;
+  });
 }
 
 export function getLocalizedComplianceNotice(

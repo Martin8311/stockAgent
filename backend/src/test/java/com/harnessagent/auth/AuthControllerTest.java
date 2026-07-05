@@ -27,6 +27,8 @@ import org.springframework.test.web.servlet.MvcResult;
 @ActiveProfiles("test")
 @Sql(
         statements = {
+                "DELETE FROM portfolio_transaction",
+                "DELETE FROM investment_asset",
                 "DELETE FROM user_profile",
                 "DELETE FROM user_role",
                 "DELETE FROM app_user"
@@ -131,4 +133,3 @@ class AuthControllerTest {
         return JsonPath.read(result.getResponse().getContentAsString(), "$.data.accessToken");
     }
 }
-

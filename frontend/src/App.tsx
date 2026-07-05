@@ -1,19 +1,26 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import "./App.css";
 import {
+  deletePortfolioTransaction,
   getComplianceNotice,
   getCurrentUser,
+  getPortfolioSummary,
+  getPortfolioTransactions,
   getSystemHealth,
   login,
+  recordPortfolioTransaction,
   register,
   updateCurrentUserProfile
 } from "./api";
 import {
+  getAssetTypeLabel,
   getCapitalPurposeLabel,
   getInvestmentHorizonLabel,
   getLocalizedComplianceNotice,
   getRiskPreferenceLabel,
+  getTransactionTypeLabel,
   LANGUAGE_STORAGE_KEY,
+  localizePortfolioRiskWarnings,
   messages,
   normalizeLanguage,
   type Language
@@ -23,6 +30,10 @@ import type {
   CapitalPurpose,
   ComplianceNotice,
   InvestmentHorizon,
+  PortfolioSummary,
+  PortfolioTransaction,
+  AssetType,
+  TransactionType,
   RiskPreference,
   SystemHealth,
   UserProfile
@@ -32,6 +43,12 @@ type LoadState = "loading" | "ready" | "error";
 type AuthMode = "login" | "register";
 
 const TOKEN_STORAGE_KEY = "harness_agent_token";
+const assetTypes: AssetType[] = ["STOCK", "FUND", "ETF", "BOND", "CASH", "CRYPTO", "OTHER"];
+const transactionTypes: TransactionType[] = ["BUY", "SELL"];
+
+function defaultTradeTime() {
+  return new Date().toISOString().slice(0, 16);
+}
 
 function App() {
   const [language, setLanguage] = useState<Language>(() =>
@@ -51,10 +68,28 @@ function App() {
   const [riskPreference, setRiskPreference] = useState<RiskPreference>("UNKNOWN");
   const [investmentHorizon, setInvestmentHorizon] = useState<InvestmentHorizon>("UNKNOWN");
   const [capitalPurpose, setCapitalPurpose] = useState<CapitalPurpose>("UNKNOWN");
+  const [portfolioSummary, setPortfolioSummary] = useState<PortfolioSummary | null>(null);
+  const [transactions, setTransactions] = useState<PortfolioTransaction[]>([]);
+  const [portfolioMessage, setPortfolioMessage] = useState<string | null>(null);
+  const [symbol, setSymbol] = useState("AAPL");
+  const [assetName, setAssetName] = useState("Apple Inc.");
+  const [assetType, setAssetType] = useState<AssetType>("STOCK");
+  const [exchange, setExchange] = useState("NASDAQ");
+  const [currency, setCurrency] = useState("USD");
+  const [transactionType, setTransactionType] = useState<TransactionType>("BUY");
+  const [quantity, setQuantity] = useState("10");
+  const [price, setPrice] = useState("100");
+  const [fee, setFee] = useState("0");
+  const [tradedAt, setTradedAt] = useState(defaultTradeTime);
+  const [note, setNote] = useState("");
 
   const t = messages[language];
   const pipeline = useMemo(() => t.pipeline.steps, [t]);
   const localizedNotice = useMemo(() => getLocalizedComplianceNotice(language, notice), [language, notice]);
+  const portfolioWarnings = useMemo(
+    () => localizePortfolioRiskWarnings(language, portfolioSummary?.riskWarnings ?? []),
+    [language, portfolioSummary]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -93,11 +128,14 @@ function App() {
         setRiskPreference(response.data.riskPreference);
         setInvestmentHorizon(response.data.investmentHorizon);
         setCapitalPurpose(response.data.capitalPurpose);
+        loadPortfolio(token);
       })
       .catch(() => {
         localStorage.removeItem(TOKEN_STORAGE_KEY);
         setToken("");
         setProfile(null);
+        setPortfolioSummary(null);
+        setTransactions([]);
       });
   }, [token]);
 
@@ -132,6 +170,56 @@ function App() {
     setAuthMessage(t.profile.updated);
   }
 
+  async function handleTransactionSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!token) {
+      return;
+    }
+    setPortfolioMessage(null);
+    try {
+      await recordPortfolioTransaction(token, {
+        symbol,
+        name: assetName,
+        assetType,
+        exchange,
+        currency,
+        transactionType,
+        quantity: Number(quantity),
+        price: Number(price),
+        fee: Number(fee || "0"),
+        tradedAt: new Date(tradedAt).toISOString(),
+        note
+      });
+      setPortfolioMessage(t.portfolio.recorded);
+      await loadPortfolio(token);
+    } catch (requestError) {
+      setPortfolioMessage(requestError instanceof Error ? requestError.message : t.errors.unknownApi);
+    }
+  }
+
+  async function handleDeleteTransaction(transactionId: number) {
+    if (!token) {
+      return;
+    }
+    setPortfolioMessage(null);
+    try {
+      await deletePortfolioTransaction(token, transactionId);
+      setPortfolioMessage(t.portfolio.deleted);
+      await loadPortfolio(token);
+    } catch (requestError) {
+      setPortfolioMessage(requestError instanceof Error ? requestError.message : t.errors.unknownApi);
+    }
+  }
+
+  async function loadPortfolio(activeToken: string) {
+    const [summaryResponse, transactionResponse] = await Promise.all([
+      getPortfolioSummary(activeToken),
+      getPortfolioTransactions(activeToken)
+    ]);
+    setPortfolioSummary(summaryResponse.data);
+    setTransactions(transactionResponse.data);
+  }
+
   function applyAuth(auth: AuthResponse) {
     localStorage.setItem(TOKEN_STORAGE_KEY, auth.accessToken);
     setToken(auth.accessToken);
@@ -141,12 +229,35 @@ function App() {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     setToken("");
     setProfile(null);
+    setPortfolioSummary(null);
+    setTransactions([]);
     setAuthMessage(t.auth.signedOut);
   }
 
   function updateLanguage(nextLanguage: Language) {
     localStorage.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
     setLanguage(nextLanguage);
+  }
+
+  function formatMoney(value: number | undefined, activeCurrency = "USD") {
+    return new Intl.NumberFormat(language === "zh" ? "zh-CN" : "en-US", {
+      style: "currency",
+      currency: activeCurrency,
+      maximumFractionDigits: 2
+    }).format(value ?? 0);
+  }
+
+  function formatNumber(value: number | undefined) {
+    return new Intl.NumberFormat(language === "zh" ? "zh-CN" : "en-US", {
+      maximumFractionDigits: 6
+    }).format(value ?? 0);
+  }
+
+  function formatPercent(value: number | undefined) {
+    return new Intl.NumberFormat(language === "zh" ? "zh-CN" : "en-US", {
+      style: "percent",
+      maximumFractionDigits: 2
+    }).format(value ?? 0);
   }
 
   return (
@@ -346,6 +457,204 @@ function App() {
                 {t.profile.save}
               </button>
             </form>
+          </section>
+        )}
+
+        {profile && (
+          <section className="section-panel portfolio-workspace">
+            <div className="section-heading">
+              <div>
+                <h2>{t.portfolio.title}</h2>
+                <span>{t.portfolio.subtitle}</span>
+              </div>
+            </div>
+
+            <div className="portfolio-grid">
+              <form className="portfolio-form" onSubmit={handleTransactionSubmit}>
+                <h3>{t.portfolio.formTitle}</h3>
+                <label>
+                  {t.portfolio.symbol}
+                  <input value={symbol} onChange={(event) => setSymbol(event.target.value)} />
+                </label>
+                <label>
+                  {t.portfolio.name}
+                  <input value={assetName} onChange={(event) => setAssetName(event.target.value)} />
+                </label>
+                <label>
+                  {t.portfolio.assetType}
+                  <select value={assetType} onChange={(event) => setAssetType(event.target.value as AssetType)}>
+                    {assetTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {getAssetTypeLabel(language, type)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  {t.portfolio.transactionType}
+                  <select
+                    value={transactionType}
+                    onChange={(event) => setTransactionType(event.target.value as TransactionType)}
+                  >
+                    {transactionTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {getTransactionTypeLabel(language, type)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  {t.portfolio.quantity}
+                  <input value={quantity} onChange={(event) => setQuantity(event.target.value)} />
+                </label>
+                <label>
+                  {t.portfolio.price}
+                  <input value={price} onChange={(event) => setPrice(event.target.value)} />
+                </label>
+                <label>
+                  {t.portfolio.fee}
+                  <input value={fee} onChange={(event) => setFee(event.target.value)} />
+                </label>
+                <label>
+                  {t.portfolio.tradedAt}
+                  <input
+                    type="datetime-local"
+                    value={tradedAt}
+                    onChange={(event) => setTradedAt(event.target.value)}
+                  />
+                </label>
+                <label>
+                  {t.portfolio.exchange}
+                  <input value={exchange} onChange={(event) => setExchange(event.target.value)} />
+                </label>
+                <label>
+                  {t.portfolio.currency}
+                  <input value={currency} onChange={(event) => setCurrency(event.target.value)} />
+                </label>
+                <label className="wide-field">
+                  {t.portfolio.note}
+                  <input value={note} onChange={(event) => setNote(event.target.value)} />
+                </label>
+                <button className="primary-action" type="submit">
+                  {t.portfolio.submit}
+                </button>
+                {portfolioMessage && <div className="inline-message">{portfolioMessage}</div>}
+              </form>
+
+              <div className="portfolio-summary">
+                <h3>{t.portfolio.summaryTitle}</h3>
+                <div className="summary-metrics">
+                  <div>
+                    <span>{t.portfolio.totalMarketValue}</span>
+                    <strong>{formatMoney(portfolioSummary?.totalMarketValue)}</strong>
+                  </div>
+                  <div>
+                    <span>{t.portfolio.totalCostBasis}</span>
+                    <strong>{formatMoney(portfolioSummary?.totalCostBasis)}</strong>
+                  </div>
+                  <div>
+                    <span>{t.portfolio.unrealizedPnl}</span>
+                    <strong>{formatMoney(portfolioSummary?.totalUnrealizedPnl)}</strong>
+                    <small>{formatPercent(portfolioSummary?.totalUnrealizedPnlRatio)}</small>
+                  </div>
+                  <div>
+                    <span>{t.portfolio.realizedPnl}</span>
+                    <strong>{formatMoney(portfolioSummary?.totalRealizedPnl)}</strong>
+                  </div>
+                </div>
+                <div className="risk-note-list">
+                  <strong>{t.portfolio.riskWarnings}</strong>
+                  <ul>
+                    {(portfolioWarnings.length > 0 ? portfolioWarnings : [t.portfolio.disclaimer]).map((warning) => (
+                      <li key={warning}>{warning}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="portfolio-lists">
+              <div>
+                <h3>{t.portfolio.holdings}</h3>
+                {portfolioSummary && portfolioSummary.holdings.length > 0 ? (
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>{t.portfolio.symbol}</th>
+                          <th>{t.portfolio.quantity}</th>
+                          <th>{t.portfolio.averageCost}</th>
+                          <th>{t.portfolio.latestPrice}</th>
+                          <th>{t.portfolio.unrealizedPnl}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {portfolioSummary.holdings.map((holding) => (
+                          <tr key={holding.asset.id}>
+                            <td>
+                              <strong>{holding.asset.symbol}</strong>
+                              <span>{holding.asset.name}</span>
+                            </td>
+                            <td>{formatNumber(holding.quantity)}</td>
+                            <td>{formatMoney(holding.averageCost, holding.asset.currency)}</td>
+                            <td>{formatMoney(holding.latestPrice, holding.asset.currency)}</td>
+                            <td>
+                              {formatMoney(holding.unrealizedPnl, holding.asset.currency)}
+                              <span>{formatPercent(holding.unrealizedPnlRatio)}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="empty-state">{t.portfolio.noHoldings}</div>
+                )}
+              </div>
+
+              <div>
+                <h3>{t.portfolio.transactions}</h3>
+                {transactions.length > 0 ? (
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>{t.portfolio.symbol}</th>
+                          <th>{t.portfolio.transactionType}</th>
+                          <th>{t.portfolio.quantity}</th>
+                          <th>{t.portfolio.price}</th>
+                          <th>{t.portfolio.delete}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {transactions.map((transaction) => (
+                          <tr key={transaction.id}>
+                            <td>
+                              <strong>{transaction.asset.symbol}</strong>
+                              <span>{new Date(transaction.tradedAt).toLocaleString()}</span>
+                            </td>
+                            <td>{getTransactionTypeLabel(language, transaction.transactionType)}</td>
+                            <td>{formatNumber(transaction.quantity)}</td>
+                            <td>{formatMoney(transaction.price, transaction.asset.currency)}</td>
+                            <td>
+                              <button
+                                className="table-action"
+                                type="button"
+                                onClick={() => handleDeleteTransaction(transaction.id)}
+                              >
+                                {t.portfolio.delete}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="empty-state">{t.portfolio.noTransactions}</div>
+                )}
+              </div>
+            </div>
           </section>
         )}
       </main>

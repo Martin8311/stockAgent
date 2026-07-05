@@ -2,6 +2,9 @@ import type {
   ApiResponse,
   AuthResponse,
   ComplianceNotice,
+  PortfolioSummary,
+  PortfolioTransaction,
+  PortfolioTransactionPayload,
   LoginPayload,
   RegisterPayload,
   SystemHealth,
@@ -71,6 +74,22 @@ async function getJsonWithToken<T>(path: string, token: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+async function deleteJson<T>(path: string, token: string): Promise<T> {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    method: "DELETE",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Request failed with status ${response.status}`);
+  }
+
+  return response.json() as Promise<T>;
+}
+
 export function getSystemHealth(): Promise<ApiResponse<SystemHealth>> {
   return getJson<ApiResponse<SystemHealth>>("/api/public/system/health");
 }
@@ -96,4 +115,23 @@ export function updateCurrentUserProfile(
   payload: UpdateProfilePayload
 ): Promise<ApiResponse<UserProfile>> {
   return sendJson<ApiResponse<UserProfile>>("PUT", "/api/me/profile", payload, token);
+}
+
+export function getPortfolioSummary(token: string): Promise<ApiResponse<PortfolioSummary>> {
+  return getJsonWithToken<ApiResponse<PortfolioSummary>>("/api/portfolio/summary", token);
+}
+
+export function getPortfolioTransactions(token: string): Promise<ApiResponse<PortfolioTransaction[]>> {
+  return getJsonWithToken<ApiResponse<PortfolioTransaction[]>>("/api/portfolio/transactions", token);
+}
+
+export function recordPortfolioTransaction(
+  token: string,
+  payload: PortfolioTransactionPayload
+): Promise<ApiResponse<PortfolioTransaction>> {
+  return sendJson<ApiResponse<PortfolioTransaction>>("POST", "/api/portfolio/transactions", payload, token);
+}
+
+export function deletePortfolioTransaction(token: string, transactionId: number): Promise<ApiResponse<null>> {
+  return deleteJson<ApiResponse<null>>(`/api/portfolio/transactions/${transactionId}`, token);
 }
