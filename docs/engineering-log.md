@@ -2,6 +2,17 @@
 
 ## 阶段 4：Spring AI、模型选择与 token 计费
 
+### 只读事务里调用带审计写入的行情服务导致 MySQL 500
+
+- 阶段：4
+- 现象：前端持仓工作台点击“保存交易”后显示 500；日志中实际报错路径是 `GET /api/portfolio/summary`，MySQL 报 `Connection is read-only. Queries leading to data modification are not allowed`。
+- 影响：交易保存后前端刷新组合摘要失败，用户感知为“保存交易接口 500”，实际是保存后的 summary 查询失败。
+- 原因：`PortfolioService.getSummary` 使用 `@Transactional(readOnly = true)`，但阶段 3 接入市场数据后，summary 内部调用 `MarketDataService.getQuoteForPortfolioValuation`，后者复用了公开 quote 查询逻辑并写入 `MARKET_DATA_QUOTE_REQUESTED` 审计事件。MySQL 严格执行只读连接限制，因此在只读事务里写审计被拦截。
+- 定位过程：先查 `.dev/logs/backend.log`，发现 500 栈指向 `/api/portfolio/summary` 而不是 `POST /api/portfolio/transactions`；继续向上追踪到 `MarketDataService.getQuote` 的审计写入。
+- 解决方案：拆分行情获取和审计记录。公开 `getQuote` 继续写审计；内部组合估值 `getQuoteForPortfolioValuation` 只取 quote，不写审计，避免污染只读事务，也避免组合摘要每个持仓都刷大量行情审计事件。
+- 验证方式：新增 `MarketDataServiceTest`，断言公开 quote 会写 audit，portfolio valuation quote 不写 audit；后端 `mvn test` 通过 18 个测试。
+- 面试表达：这个问题体现了事务边界的重要性。只读查询链路中不能隐藏写操作，尤其 MySQL 会真实 enforcement。修复时我没有粗暴去掉 readOnly，而是把“用户显式行情查询”和“内部估值查询”的审计语义拆开。
+
 ### Spring AI 版本要跟 Spring Boot 版本对齐
 
 - 阶段：4

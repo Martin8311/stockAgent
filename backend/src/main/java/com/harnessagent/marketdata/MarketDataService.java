@@ -29,17 +29,7 @@ public class MarketDataService {
     }
 
     public MarketQuote getQuote(String actor, MarketDataRequest request) {
-        MarketDataRequest normalized = normalize(request);
-        MarketQuote quote = providers.stream()
-                .filter(provider -> provider.descriptor().enabled())
-                .filter(provider -> normalized.provider() == null
-                        || provider.descriptor().name().equalsIgnoreCase(normalized.provider()))
-                .flatMap(provider -> provider.fetchQuote(normalized).stream())
-                .findFirst()
-                .orElseThrow(() -> new ApiRequestException(
-                        HttpStatus.SERVICE_UNAVAILABLE,
-                        "No enabled market data provider returned a quote for " + normalized.symbol()
-                ));
+        MarketQuote quote = fetchQuote(normalize(request));
         auditEventService.record(
                 actor,
                 "MARKET_DATA_QUOTE_REQUESTED",
@@ -50,7 +40,20 @@ public class MarketDataService {
     }
 
     public MarketQuote getQuoteForPortfolioValuation(String actor, String symbol, String exchange, String currency) {
-        return getQuote(actor, new MarketDataRequest(symbol, exchange, currency, null));
+        return fetchQuote(normalize(new MarketDataRequest(symbol, exchange, currency, null)));
+    }
+
+    private MarketQuote fetchQuote(MarketDataRequest normalized) {
+        return providers.stream()
+                .filter(provider -> provider.descriptor().enabled())
+                .filter(provider -> normalized.provider() == null
+                        || provider.descriptor().name().equalsIgnoreCase(normalized.provider()))
+                .flatMap(provider -> provider.fetchQuote(normalized).stream())
+                .findFirst()
+                .orElseThrow(() -> new ApiRequestException(
+                        HttpStatus.SERVICE_UNAVAILABLE,
+                        "No enabled market data provider returned a quote for " + normalized.symbol()
+                ));
     }
 
     private MarketDataRequest normalize(MarketDataRequest request) {
