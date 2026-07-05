@@ -1,36 +1,64 @@
-import { useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import "./App.css";
-import { getComplianceNotice, getSystemHealth } from "./api";
-import type { ComplianceNotice, SystemHealth } from "./types";
+import {
+  getComplianceNotice,
+  getCurrentUser,
+  getSystemHealth,
+  login,
+  register,
+  updateCurrentUserProfile
+} from "./api";
+import type {
+  AuthResponse,
+  CapitalPurpose,
+  ComplianceNotice,
+  InvestmentHorizon,
+  RiskPreference,
+  SystemHealth,
+  UserProfile
+} from "./types";
 
 type LoadState = "loading" | "ready" | "error";
+type AuthMode = "login" | "register";
+
+const TOKEN_STORAGE_KEY = "harness_agent_token";
 
 function App() {
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [health, setHealth] = useState<SystemHealth | null>(null);
   const [notice, setNotice] = useState<ComplianceNotice | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [authMode, setAuthMode] = useState<AuthMode>("register");
+  const [token, setToken] = useState(() => localStorage.getItem(TOKEN_STORAGE_KEY) ?? "");
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [email, setEmail] = useState("demo@example.com");
+  const [password, setPassword] = useState("StrongPass123");
+  const [displayName, setDisplayName] = useState("Demo Investor");
+  const [authMessage, setAuthMessage] = useState<string | null>(null);
+  const [riskPreference, setRiskPreference] = useState<RiskPreference>("UNKNOWN");
+  const [investmentHorizon, setInvestmentHorizon] = useState<InvestmentHorizon>("UNKNOWN");
+  const [capitalPurpose, setCapitalPurpose] = useState<CapitalPurpose>("UNKNOWN");
 
   const pipeline = useMemo(
     () => [
       {
-        agent: "MarketDataAgent",
-        description: "市场数据采集、清洗、来源标记和时效性检查。",
-        status: "Planned"
+        agent: "Identity",
+        description: "User registration, password hashing, bearer token authentication, and role checks.",
+        status: "Ready"
+      },
+      {
+        agent: "Audit",
+        description: "Registration, login, disclaimer access, and profile changes are recorded as audit events.",
+        status: "Ready"
       },
       {
         agent: "PortfolioAgent",
-        description: "持仓录入、盈亏分析、组合暴露与资产集中度分析。",
-        status: "Planned"
-      },
-      {
-        agent: "RiskAgent",
-        description: "波动、回撤、集中持仓、杠杆和用户画像缺口提醒。",
-        status: "Planned"
+        description: "Holdings and portfolio analysis begin in the next delivery phase.",
+        status: "Next"
       },
       {
         agent: "ComplianceAgent",
-        description: "检查免责声明、禁止用语、假设、数据来源和人工审批要求。",
+        description: "Investment outputs remain constrained by risk disclosure and suitability context.",
         status: "Baseline"
       }
     ],
@@ -62,6 +90,69 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!token) {
+      setProfile(null);
+      return;
+    }
+
+    getCurrentUser(token)
+      .then((response) => {
+        setProfile(response.data);
+        setRiskPreference(response.data.riskPreference);
+        setInvestmentHorizon(response.data.investmentHorizon);
+        setCapitalPurpose(response.data.capitalPurpose);
+      })
+      .catch(() => {
+        localStorage.removeItem(TOKEN_STORAGE_KEY);
+        setToken("");
+        setProfile(null);
+      });
+  }, [token]);
+
+  async function handleAuthSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setAuthMessage(null);
+    setError(null);
+
+    try {
+      const response =
+        authMode === "register"
+          ? await register({ email, password, displayName })
+          : await login({ email, password });
+      applyAuth(response.data);
+      setAuthMessage(authMode === "register" ? "Registered and signed in." : "Signed in.");
+    } catch (requestError) {
+      setAuthMessage(requestError instanceof Error ? requestError.message : "Authentication failed");
+    }
+  }
+
+  async function handleProfileSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!token) {
+      return;
+    }
+    const response = await updateCurrentUserProfile(token, {
+      riskPreference,
+      investmentHorizon,
+      capitalPurpose
+    });
+    setProfile(response.data);
+    setAuthMessage("Investment profile context updated.");
+  }
+
+  function applyAuth(auth: AuthResponse) {
+    localStorage.setItem(TOKEN_STORAGE_KEY, auth.accessToken);
+    setToken(auth.accessToken);
+  }
+
+  function logout() {
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    setToken("");
+    setProfile(null);
+    setAuthMessage("Signed out.");
+  }
+
   return (
     <div className="app-shell">
       <header className="top-bar">
@@ -78,45 +169,92 @@ function App() {
       <main className="dashboard">
         <section className="hero">
           <div className="hero-copy">
-            <p className="eyebrow">Phase 0 foundation</p>
-            <h1>面向投资研究与持仓管理的工业级智能助手骨架</h1>
+            <p className="eyebrow">Phase 1 identity foundation</p>
+            <h1>Secure sign-in, profile context, and role-aware workflow baseline</h1>
             <p>
-              当前版本聚焦项目地基：Spring Boot API、React 仪表盘、MySQL 开发环境、
-              OpenAPI、审计基线和投资合规提示。后续阶段会逐步接入认证、持仓、市场数据、
-              Spring AI、Multi-agent 编排、Sandbox 和 Skill 审批。
+              The assistant now supports registration, login, bearer token authentication, role checks,
+              and investment profile context. This creates the trust boundary for portfolio, market data,
+              sandbox, and agent workflows.
             </p>
             <div className="actions">
               <a className="primary-action" href="http://localhost:8080/swagger-ui.html">
-                查看 API 文档
+                API docs
               </a>
               <a className="secondary-action" href="http://localhost:8080/actuator/health">
-                查看服务健康
+                Service health
               </a>
             </div>
-            {loadState === "error" && (
-              <div className="error-banner">后端 API 暂不可用：{error}</div>
-            )}
+            {loadState === "error" && <div className="error-banner">Backend API unavailable: {error}</div>}
           </div>
 
-          <aside className="signal-panel" aria-label="System signals">
-            <div className="metric-card">
-              <span>Compliance guard</span>
-              <strong>{health?.complianceGuardEnabled ? "Enabled" : "Pending"}</strong>
-              <small>所有投资相关输出必须保留风险提示、假设和数据来源。</small>
+          <aside className="auth-panel" aria-label="Authentication panel">
+            <div className="section-heading compact">
+              <h2>{profile ? "Signed in" : "Account access"}</h2>
+              {profile && <button onClick={logout}>Sign out</button>}
             </div>
-            <div className="metric-card">
-              <span>Audit baseline</span>
-              <strong>{loadState === "ready" ? "Recording" : "Waiting"}</strong>
-              <small>公共免责声明访问已经接入审计事件，为后续审批和回放打底。</small>
-            </div>
+
+            {profile ? (
+              <div className="profile-summary">
+                <strong>{profile.displayName}</strong>
+                <span>{profile.email}</span>
+                <div className="role-row">
+                  {profile.roles.map((role) => (
+                    <span className="step-tag" key={role}>
+                      {role}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <form className="auth-form" onSubmit={handleAuthSubmit}>
+                <div className="mode-toggle">
+                  <button
+                    type="button"
+                    className={authMode === "register" ? "active" : ""}
+                    onClick={() => setAuthMode("register")}
+                  >
+                    Register
+                  </button>
+                  <button
+                    type="button"
+                    className={authMode === "login" ? "active" : ""}
+                    onClick={() => setAuthMode("login")}
+                  >
+                    Login
+                  </button>
+                </div>
+                {authMode === "register" && (
+                  <label>
+                    Display name
+                    <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
+                  </label>
+                )}
+                <label>
+                  Email
+                  <input value={email} onChange={(event) => setEmail(event.target.value)} />
+                </label>
+                <label>
+                  Password
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                  />
+                </label>
+                <button className="primary-action" type="submit">
+                  {authMode === "register" ? "Create account" : "Sign in"}
+                </button>
+              </form>
+            )}
+            {authMessage && <div className="inline-message">{authMessage}</div>}
           </aside>
         </section>
 
         <section className="grid">
           <div className="section-panel">
             <div className="section-heading">
-              <h2>Agent 协作路线</h2>
-              <span>Structured outputs first</span>
+              <h2>Delivery pipeline</h2>
+              <span>Identity first</span>
             </div>
             <div className="pipeline">
               {pipeline.map((step) => (
@@ -138,14 +276,65 @@ function App() {
                 ))}
               </ul>
             ) : (
-              <div className="empty-state">正在加载合规提示。</div>
+              <div className="empty-state">Loading compliance notice.</div>
             )}
           </aside>
         </section>
+
+        {profile && (
+          <section className="section-panel profile-editor">
+            <div className="section-heading">
+              <h2>Investment profile context</h2>
+              <span>Used to avoid unsuitable personalized suggestions</span>
+            </div>
+            <form className="profile-form" onSubmit={handleProfileSubmit}>
+              <label>
+                Risk preference
+                <select
+                  value={riskPreference}
+                  onChange={(event) => setRiskPreference(event.target.value as RiskPreference)}
+                >
+                  <option value="UNKNOWN">Unknown</option>
+                  <option value="CONSERVATIVE">Conservative</option>
+                  <option value="BALANCED">Balanced</option>
+                  <option value="AGGRESSIVE">Aggressive</option>
+                </select>
+              </label>
+              <label>
+                Investment horizon
+                <select
+                  value={investmentHorizon}
+                  onChange={(event) => setInvestmentHorizon(event.target.value as InvestmentHorizon)}
+                >
+                  <option value="UNKNOWN">Unknown</option>
+                  <option value="SHORT_TERM">Short term</option>
+                  <option value="MID_TERM">Mid term</option>
+                  <option value="LONG_TERM">Long term</option>
+                </select>
+              </label>
+              <label>
+                Capital purpose
+                <select
+                  value={capitalPurpose}
+                  onChange={(event) => setCapitalPurpose(event.target.value as CapitalPurpose)}
+                >
+                  <option value="UNKNOWN">Unknown</option>
+                  <option value="LIQUIDITY_RESERVE">Liquidity reserve</option>
+                  <option value="EDUCATION">Education</option>
+                  <option value="HOUSE_PURCHASE">House purchase</option>
+                  <option value="RETIREMENT">Retirement</option>
+                  <option value="GENERAL_WEALTH">General wealth</option>
+                </select>
+              </label>
+              <button className="primary-action" type="submit">
+                Save profile
+              </button>
+            </form>
+          </section>
+        )}
       </main>
     </div>
   );
 }
 
 export default App;
-

@@ -39,6 +39,8 @@ app:
   security:
     allowed-origins:
       - ${FRONTEND_ORIGIN:http://localhost:5173}
+    jwt-secret: ${JWT_SECRET:dev-only-change-me-please-32-bytes-minimum}
+    token-ttl-minutes: ${JWT_TTL_MINUTES:120}
   compliance:
     default-disclaimer: "This system provides educational explanations, auxiliary analysis, and risk reminders only. It does not promise returns and does not replace advice from a licensed financial advisor."
     required-warnings:
@@ -46,4 +48,3 @@ app:
       - "Historical performance does not guarantee future results."
       - "Forecasts must disclose assumptions, data sources, confidence, and risk."
       - "Personalized suggestions require risk preference, investment horizon, and capital purpose."
-

@@ -15,6 +15,8 @@ app:
   security:
     allowed-origins:
       - http://localhost:5173
+    jwt-secret: test-only-change-me-please-32-bytes-minimum
+    token-ttl-minutes: 60
   compliance:
     default-disclaimer: "Test disclaimer for investment education only."
     required-warnings:

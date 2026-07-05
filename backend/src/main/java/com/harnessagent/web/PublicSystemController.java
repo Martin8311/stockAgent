@@ -27,7 +27,7 @@ public class PublicSystemController {
     public ApiResponse<SystemHealthResponse> health() {
         return ApiResponse.ok(new SystemHealthResponse(
                 "harness-engineering-intelligent-assistant",
-                "PHASE_0",
+                "PHASE_1",
                 "UP",
                 true,
                 Instant.now()
@@ -46,4 +46,3 @@ public class PublicSystemController {
         return ApiResponse.ok(complianceNoticeService.getDefaultNotice(), "Compliance notice loaded");
     }
 }
-

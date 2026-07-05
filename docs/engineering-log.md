@@ -103,3 +103,26 @@
 - 高价值记录优先包含可复现现象、定位证据、最终验证命令和面试表达。
 - 与金融合规、安全、审计、Sandbox、Skill 审批相关的问题必须记录，因为这些是本项目的核心亮点。
 
+## 阶段 1：用户认证与权限
+
+### Spring 构造器选择在存在测试构造器时不明确
+
+- 阶段：1
+- 现象：后端测试启动失败，报 `JwtTokenService`: `No default constructor found`。
+- 影响：Spring Boot 上下文无法启动，认证相关测试全部失败。
+- 原因：`JwtTokenService` 同时存在生产构造器和包级测试构造器，Spring 没有明确的注入构造器选择。
+- 定位过程：查看 Surefire 输出中的 Bean 创建链路，从 `AuthController` 追到 `SecurityConfig`、`JwtAuthenticationFilter`，最终定位到 `JwtTokenService` 实例化失败。
+- 解决方案：在生产构造器上显式添加 `@Autowired`，测试构造器保留为包级可见。
+- 验证方式：重新运行 `mvn test`，Spring 上下文成功启动。
+- 面试表达：当为了可测试性增加额外构造器时，要显式声明 DI 构造器，否则框架反射构造器选择可能变得不确定。
+
+### ResponseStatusException 与统一 API 错误格式冲突
+
+- 阶段：1
+- 现象：重复注册邮箱时接口返回 Spring ProblemDetails JSON，而不是项目统一的 `ErrorResponse`。
+- 影响：前端无法稳定依赖统一错误结构，测试也无法断言 `errorCode`。
+- 原因：启用了 `spring.mvc.problemdetails.enabled=true` 后，`ResponseStatusException` 会被 Spring 的 ProblemDetails 流程处理。
+- 定位过程：MockMvc 输出显示状态码是 409，但响应体是 `application/problem+json`，说明不是业务逻辑失败，而是异常映射路径不符合预期。
+- 解决方案：新增项目级 `ApiRequestException`，由 `GlobalExceptionHandler` 显式映射为 `ErrorResponse`。
+- 验证方式：重复注册测试通过，返回 `errorCode=REQUEST_ERROR`。
+- 面试表达：统一 API 错误格式不能只靠默认异常，尤其在 Spring Boot 3 的 ProblemDetails 机制下，业务异常最好有项目级抽象和集中映射。

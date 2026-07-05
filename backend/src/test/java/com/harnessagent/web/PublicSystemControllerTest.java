@@ -24,6 +24,7 @@ class PublicSystemControllerTest {
         mockMvc.perform(get("/api/public/system/health"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.phase").value("PHASE_1"))
                 .andExpect(jsonPath("$.data.status").value("UP"))
                 .andExpect(jsonPath("$.data.complianceGuardEnabled").value(true));
     }
@@ -37,4 +38,3 @@ class PublicSystemControllerTest {
                 .andExpect(jsonPath("$.data.requiredDisclosures").isArray());
     }
 }
-
