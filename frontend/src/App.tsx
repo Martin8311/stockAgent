@@ -9,11 +9,13 @@ import {
   getMarketQuote,
   getPortfolioSummary,
   getPortfolioTransactions,
+  getSandboxTasks,
   getSystemHealth,
   login,
   recordPortfolioTransaction,
   register,
   requestInvestmentAnalysis,
+  submitSandboxTask,
   updateCurrentUserProfile
 } from "./api";
 import {
@@ -44,6 +46,8 @@ import type {
   MarketQuote,
   PortfolioSummary,
   PortfolioTransaction,
+  SandboxTask,
+  SandboxTaskType,
   AssetType,
   TransactionType,
   RiskPreference,
@@ -57,9 +61,17 @@ type AuthMode = "login" | "register";
 const TOKEN_STORAGE_KEY = "harness_agent_token";
 const assetTypes: AssetType[] = ["STOCK", "FUND", "ETF", "BOND", "CASH", "CRYPTO", "OTHER"];
 const transactionTypes: TransactionType[] = ["BUY", "SELL"];
+const sandboxTaskTypes: SandboxTaskType[] = ["MOCK_BACKTEST", "PORTFOLIO_STRESS_TEST"];
 
 function defaultTradeTime() {
   return new Date().toISOString().slice(0, 16);
+}
+
+function defaultSandboxScript(taskType: SandboxTaskType) {
+  if (taskType === "PORTFOLIO_STRESS_TEST") {
+    return "shockPercent=-0.10\nshock.AAPL=-0.20";
+  }
+  return "symbol=AAPL\ninitialCapital=10000\nlookbackDays=60\nstrategy=moving-average-cross";
 }
 
 function App() {
@@ -101,6 +113,12 @@ function App() {
     "Explain the key assumptions, risks, and portfolio considerations for this asset."
   );
   const [includePortfolioContext, setIncludePortfolioContext] = useState(true);
+  const [sandboxTasks, setSandboxTasks] = useState<SandboxTask[]>([]);
+  const [sandboxTaskType, setSandboxTaskType] = useState<SandboxTaskType>("MOCK_BACKTEST");
+  const [sandboxScript, setSandboxScript] = useState(defaultSandboxScript("MOCK_BACKTEST"));
+  const [sandboxTimeoutMs, setSandboxTimeoutMs] = useState("1200");
+  const [sandboxLoading, setSandboxLoading] = useState(false);
+  const [sandboxMessage, setSandboxMessage] = useState<string | null>(null);
   const [symbol, setSymbol] = useState("AAPL");
   const [assetName, setAssetName] = useState("Apple Inc.");
   const [assetType, setAssetType] = useState<AssetType>("STOCK");
@@ -173,6 +191,7 @@ function App() {
         loadPortfolio(token);
         loadMarketProviders(token);
         loadAiModels(token);
+        loadSandboxTasks(token);
       })
       .catch(() => {
         localStorage.removeItem(TOKEN_STORAGE_KEY);
@@ -184,6 +203,7 @@ function App() {
         setMarketQuote(null);
         setAiModels([]);
         setAnalysisResult(null);
+        setSandboxTasks([]);
       });
   }, [token]);
 
@@ -284,6 +304,11 @@ function App() {
     });
   }
 
+  async function loadSandboxTasks(activeToken: string) {
+    const response = await getSandboxTasks(activeToken);
+    setSandboxTasks(response.data);
+  }
+
   async function handleQuoteSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!token) {
@@ -324,6 +349,33 @@ function App() {
     }
   }
 
+  async function handleSandboxSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!token) {
+      return;
+    }
+    setSandboxMessage(null);
+    setSandboxLoading(true);
+    try {
+      const response = await submitSandboxTask(token, {
+        taskType: sandboxTaskType,
+        script: sandboxScript,
+        timeoutMs: Number(sandboxTimeoutMs || "1200")
+      });
+      setSandboxTasks((currentTasks) => [response.data, ...currentTasks.filter((task) => task.id !== response.data.id)]);
+      setSandboxMessage(t.sandbox.completed);
+    } catch (requestError) {
+      setSandboxMessage(requestError instanceof Error ? requestError.message : t.errors.unknownApi);
+    } finally {
+      setSandboxLoading(false);
+    }
+  }
+
+  function handleSandboxTaskTypeChange(nextTaskType: SandboxTaskType) {
+    setSandboxTaskType(nextTaskType);
+    setSandboxScript(defaultSandboxScript(nextTaskType));
+  }
+
   function applyAuth(auth: AuthResponse) {
     localStorage.setItem(TOKEN_STORAGE_KEY, auth.accessToken);
     setToken(auth.accessToken);
@@ -339,6 +391,7 @@ function App() {
     setMarketQuote(null);
     setAiModels([]);
     setAnalysisResult(null);
+    setSandboxTasks([]);
     setAuthMessage(t.auth.signedOut);
   }
 
@@ -893,6 +946,102 @@ function App() {
                     </div>
                   </article>
                 ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {profile && (
+          <section className="section-panel sandbox-workspace">
+            <div className="section-heading">
+              <div>
+                <h2>{t.sandbox.title}</h2>
+                <span>{t.sandbox.subtitle}</span>
+              </div>
+            </div>
+
+            <div className="sandbox-grid">
+              <form className="sandbox-form" onSubmit={handleSandboxSubmit}>
+                <h3>{t.sandbox.formTitle}</h3>
+                <label>
+                  {t.sandbox.taskType}
+                  <select
+                    value={sandboxTaskType}
+                    onChange={(event) => handleSandboxTaskTypeChange(event.target.value as SandboxTaskType)}
+                  >
+                    {sandboxTaskTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  {t.sandbox.timeoutMs}
+                  <input value={sandboxTimeoutMs} onChange={(event) => setSandboxTimeoutMs(event.target.value)} />
+                </label>
+                <label className="wide-field">
+                  {t.sandbox.script}
+                  <textarea value={sandboxScript} onChange={(event) => setSandboxScript(event.target.value)} />
+                </label>
+                <button className="primary-action" type="submit" disabled={sandboxLoading}>
+                  {sandboxLoading ? t.sandbox.running : t.sandbox.submit}
+                </button>
+                {sandboxMessage && <div className="inline-message">{sandboxMessage}</div>}
+              </form>
+
+              <div className="sandbox-task-list">
+                <h3>{t.sandbox.taskList}</h3>
+                {sandboxTasks.length > 0 ? (
+                  sandboxTasks.map((task) => (
+                    <article className="sandbox-task-card" key={task.id}>
+                      <div className="quote-heading">
+                        <div>
+                          <strong>
+                            #{task.id} {task.taskType}
+                          </strong>
+                          <span>
+                            {t.sandbox.status}: {task.status} / {t.sandbox.riskLevel}: {task.riskLevel}
+                          </span>
+                        </div>
+                        <span className="step-tag">{task.executionTimeMs ?? 0} ms</span>
+                      </div>
+                      {task.approvalReason && (
+                        <div className="inline-message">
+                          {t.sandbox.approvalReason}: {task.approvalReason}
+                        </div>
+                      )}
+                      {task.errorMessage && (
+                        <div className="error-banner">
+                          {t.sandbox.error}: {task.errorMessage}
+                        </div>
+                      )}
+                      {task.output ? (
+                        <>
+                          <div className="analysis-summary">
+                            <strong>{t.sandbox.output}</strong>
+                            <p>{task.output.summary}</p>
+                          </div>
+                          <pre className="sandbox-metrics">
+                            {JSON.stringify(task.output.metrics, null, 2)}
+                          </pre>
+                          <div className="risk-note-list">
+                            <strong>{t.sandbox.riskWarnings}</strong>
+                            <ul>
+                              {task.output.riskWarnings.map((warning) => (
+                                <li key={warning}>{warning}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="empty-state">{t.sandbox.noOutput}</div>
+                      )}
+                    </article>
+                  ))
+                ) : (
+                  <div className="empty-state">{t.sandbox.noTasks}</div>
+                )}
               </div>
             </div>
           </section>

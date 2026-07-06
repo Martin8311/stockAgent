@@ -201,6 +201,26 @@ export const messages = {
       approvalReasons: "Approval reasons",
       disclaimer: "Disclaimer"
     },
+    sandbox: {
+      title: "Sandbox execution",
+      subtitle: "Phase 6 governed execution for safe backtests and stress tests",
+      formTitle: "Submit sandbox task",
+      taskType: "Task type",
+      script: "Safe DSL script",
+      timeoutMs: "Timeout ms",
+      submit: "Run sandbox task",
+      running: "Running...",
+      completed: "Sandbox task processed.",
+      taskList: "Sandbox task history",
+      status: "Status",
+      riskLevel: "Risk",
+      approvalReason: "Approval reason",
+      error: "Error",
+      output: "Output",
+      riskWarnings: "Sandbox risk warnings",
+      noOutput: "No executable output. The task may be rejected or pending approval.",
+      noTasks: "No sandbox tasks yet."
+    },
     errors: {
       unknownApi: "Unknown API error"
     }
@@ -389,6 +409,26 @@ export const messages = {
       noHumanReview: "无需人工复核",
       approvalReasons: "复核原因",
       disclaimer: "免责声明"
+    },
+    sandbox: {
+      title: "Sandbox 执行",
+      subtitle: "阶段 6：用于安全回测和压力测试的受控执行环境",
+      formTitle: "提交 Sandbox 任务",
+      taskType: "任务类型",
+      script: "安全 DSL 脚本",
+      timeoutMs: "超时时间 ms",
+      submit: "运行 Sandbox 任务",
+      running: "运行中...",
+      completed: "Sandbox 任务已处理。",
+      taskList: "Sandbox 任务记录",
+      status: "状态",
+      riskLevel: "风险",
+      approvalReason: "审批原因",
+      error: "错误",
+      output: "输出",
+      riskWarnings: "Sandbox 风险提示",
+      noOutput: "暂无可执行输出，任务可能已被拒绝或正在等待审批。",
+      noTasks: "暂无 Sandbox 任务。"
     },
     errors: {
       unknownApi: "未知 API 错误"

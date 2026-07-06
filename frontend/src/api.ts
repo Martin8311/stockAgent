@@ -10,6 +10,8 @@ import type {
   PortfolioSummary,
   PortfolioTransaction,
   PortfolioTransactionPayload,
+  SandboxTask,
+  SandboxTaskPayload,
   LoginPayload,
   RegisterPayload,
   SystemHealth,
@@ -164,4 +166,15 @@ export function requestInvestmentAnalysis(
   payload: InvestmentAnalysisPayload
 ): Promise<ApiResponse<InvestmentAnalysisResponse>> {
   return sendJson<ApiResponse<InvestmentAnalysisResponse>>("POST", "/api/ai/analysis", payload, token);
+}
+
+export function getSandboxTasks(token: string): Promise<ApiResponse<SandboxTask[]>> {
+  return getJsonWithToken<ApiResponse<SandboxTask[]>>("/api/sandbox/tasks", token);
+}
+
+export function submitSandboxTask(
+  token: string,
+  payload: SandboxTaskPayload
+): Promise<ApiResponse<SandboxTask>> {
+  return sendJson<ApiResponse<SandboxTask>>("POST", "/api/sandbox/tasks", payload, token);
 }

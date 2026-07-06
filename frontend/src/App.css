@@ -363,6 +363,10 @@ h1 {
   margin-top: 24px;
 }
 
+.sandbox-workspace {
+  margin-top: 24px;
+}
+
 .profile-form {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: end;
@@ -457,6 +461,12 @@ h1 {
   gap: 20px;
 }
 
+.sandbox-grid {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.75fr) minmax(0, 1fr);
+  gap: 20px;
+}
+
 .portfolio-form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -488,12 +498,25 @@ h1 {
   background: #fbfffd;
 }
 
+.sandbox-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-content: start;
+  padding: 18px;
+  border: 1px solid #deece8;
+  border-radius: 8px;
+  background: #fbfffd;
+}
+
 .portfolio-form h3,
 .portfolio-summary h3,
 .market-quote-form h3,
 .market-quote-card h3,
 .ai-analysis-form h3,
 .ai-analysis-card h3,
+.sandbox-form h3,
+.sandbox-task-list h3,
 .provider-list h3,
 .portfolio-lists h3 {
   margin: 0;
@@ -506,6 +529,9 @@ h1 {
 .ai-analysis-form h3,
 .ai-analysis-form .primary-action,
 .ai-analysis-form .inline-message,
+.sandbox-form h3,
+.sandbox-form .primary-action,
+.sandbox-form .inline-message,
 .wide-field {
   grid-column: 1 / -1;
 }
@@ -527,6 +553,14 @@ h1 {
 }
 
 .ai-analysis-form label {
+  display: grid;
+  gap: 6px;
+  color: #547069;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.sandbox-form label {
   display: grid;
   gap: 6px;
   color: #547069;
@@ -579,10 +613,29 @@ h1 {
   padding: 0 10px;
 }
 
+.sandbox-form input,
+.sandbox-form select,
+.sandbox-form textarea {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid #bfded6;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #163331;
+  padding: 0 10px;
+}
+
 .ai-analysis-form textarea {
   min-height: 104px;
   padding: 10px;
   resize: vertical;
+}
+
+.sandbox-form textarea {
+  min-height: 150px;
+  padding: 10px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
 }
 
 .primary-action:disabled {
@@ -615,6 +668,32 @@ h1 {
   border: 1px solid #deece8;
   border-radius: 8px;
   background: #ffffff;
+}
+
+.sandbox-task-list {
+  display: grid;
+  gap: 12px;
+}
+
+.sandbox-task-card {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid #deece8;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.sandbox-metrics {
+  overflow-x: auto;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid #deece8;
+  border-radius: 8px;
+  background: #f8fffd;
+  color: #163331;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .quote-heading {
@@ -923,9 +1002,11 @@ tr:last-child td {
   .portfolio-grid,
   .market-data-grid,
   .ai-grid,
+  .sandbox-grid,
   .summary-metrics,
   .portfolio-form,
-  .ai-analysis-form {
+  .ai-analysis-form,
+  .sandbox-form {
     grid-template-columns: 1fr;
   }
 

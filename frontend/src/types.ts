@@ -39,6 +39,9 @@ export type TokenUsageSource = "ACTUAL" | "ESTIMATED" | "MOCK";
 export type AgentRole = "MARKET_DATA" | "PORTFOLIO" | "RISK" | "STRATEGY" | "COMPLIANCE" | "SUPERVISOR";
 export type AgentStepStatus = "COMPLETED" | "SKIPPED" | "REVIEW_REQUIRED";
 export type AgentWorkflowStatus = "COMPLETED" | "HUMAN_REVIEW_REQUIRED";
+export type SandboxTaskType = "MOCK_BACKTEST" | "PORTFOLIO_STRESS_TEST";
+export type SandboxTaskStatus = "COMPLETED" | "FAILED" | "REJECTED" | "PENDING_APPROVAL";
+export type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 
 export interface AuthUser {
   id: number;
@@ -243,4 +246,33 @@ export interface InvestmentAnalysisResponse {
   agentWorkflow: AgentWorkflow;
   disclaimer: string;
   createdAt: string;
+}
+
+export interface SandboxExecutionOutput {
+  summary: string;
+  metrics: Record<string, unknown>;
+  observations: string[];
+  riskWarnings: string[];
+  disclaimer: string;
+}
+
+export interface SandboxTask {
+  id: number;
+  taskType: SandboxTaskType;
+  status: SandboxTaskStatus;
+  riskLevel: RiskLevel;
+  script: string;
+  output: SandboxExecutionOutput | null;
+  errorMessage: string | null;
+  approvalReason: string | null;
+  timeoutMs: number;
+  executionTimeMs: number | null;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+export interface SandboxTaskPayload {
+  taskType: SandboxTaskType;
+  script: string;
+  timeoutMs: number;
 }
