@@ -117,11 +117,20 @@ Stop-OrphanedProjectProcesses
 
 if ($StopDocker) {
     Write-Step "Stopping MySQL Docker Compose service ..."
-    Push-Location $RootDir
-    try {
-        docker compose stop mysql
-    } finally {
-        Pop-Location
+    if (!(Get-Command docker -ErrorAction SilentlyContinue)) {
+        Write-Warning "Docker CLI was not found. Skipping Docker Compose stop."
+    } else {
+        Push-Location $RootDir
+        try {
+            docker compose stop mysql
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warning "Docker Compose stop returned exit code $LASTEXITCODE."
+            }
+        } catch {
+            Write-Warning "Could not stop Docker Compose service: $($_.Exception.Message)"
+        } finally {
+            Pop-Location
+        }
     }
 }
 

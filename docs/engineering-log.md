@@ -1,5 +1,17 @@
 # Engineering Log
 
+## 一键关闭所有服务
+
+### 区分轻量停止和完整停止
+
+- 阶段：开发体验修正
+- 现象：已有 `scripts/stop-dev.ps1` 可以停止后端和前端，但 Docker MySQL 需要额外传 `-StopDocker`，根目录也没有适合双击的一键关闭入口。
+- 影响：用户本地切换 profile，例如启用 MiniMax 测试 profile 时，如果旧后端还在运行，启动脚本会复用旧进程，导致新环境变量不生效。
+- 原因：开发脚本为了避免误停 Docker，把 Docker 停止做成了可选参数；但实际演示时更需要一个“全量关闭再重启”的明确入口。
+- 解决方案：新增 `stop-all.cmd` 和 `scripts/stop-all.ps1`。`stop-all` 默认调用 `stop-dev.ps1 -StopDocker`，关闭后端、前端、项目残留进程和 Docker MySQL；如需保留 Docker，可传 `-KeepDocker`。
+- 验证方式：对 PowerShell 脚本做语法解析检查；不在验证中直接执行停止脚本，避免中断用户当前服务。
+- 面试表达：我把“只停应用”和“完整停栈”拆成两个入口，既保护本地数据库容器，又提供了遇到 profile 或环境变量切换问题时的确定性恢复手段。
+
 ## MiniMax 本机实测与中文输出
 
 ### Live 模型测试必须显式打开，普通测试继续 mock
