@@ -70,6 +70,7 @@ import type {
 
 type LoadState = "loading" | "ready" | "error";
 type AuthMode = "login" | "register";
+type AppView = "business" | "admin";
 
 const TOKEN_STORAGE_KEY = "harness_agent_token";
 const assetTypes: AssetType[] = ["STOCK", "FUND", "ETF", "BOND", "CASH", "CRYPTO", "OTHER"];
@@ -103,6 +104,7 @@ function App() {
   const [notice, setNotice] = useState<ComplianceNotice | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [authMode, setAuthMode] = useState<AuthMode>("register");
+  const [activeView, setActiveView] = useState<AppView>("business");
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_STORAGE_KEY) ?? "");
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [email, setEmail] = useState("demo@example.com");
@@ -187,6 +189,8 @@ function App() {
     [aiModels, selectedModelId]
   );
   const isAdmin = profile?.roles.includes("ADMIN") ?? false;
+  const isAdminView = activeView === "admin" && isAdmin;
+  const isBusinessView = activeView === "business";
 
   useEffect(() => {
     let cancelled = false;
@@ -222,6 +226,7 @@ function App() {
     getCurrentUser(token)
       .then((response) => {
         setProfile(response.data);
+        setActiveView(response.data.roles.includes("ADMIN") ? "admin" : "business");
         setRiskPreference(response.data.riskPreference);
         setInvestmentHorizon(response.data.investmentHorizon);
         setCapitalPurpose(response.data.capitalPurpose);
@@ -250,6 +255,12 @@ function App() {
         setApprovalRequests([]);
       });
   }, [token]);
+
+  useEffect(() => {
+    if (profile && !isAdmin && activeView === "admin") {
+      setActiveView("business");
+    }
+  }, [activeView, isAdmin, profile]);
 
   async function handleAuthSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -563,6 +574,7 @@ function App() {
   function applyAuth(auth: AuthResponse) {
     localStorage.setItem(TOKEN_STORAGE_KEY, auth.accessToken);
     setToken(auth.accessToken);
+    setActiveView(auth.user.roles.includes("ADMIN") ? "admin" : "business");
   }
 
   function logout() {
@@ -579,6 +591,7 @@ function App() {
     setActiveSkills([]);
     setAdminSkills([]);
     setApprovalRequests([]);
+    setActiveView("business");
     setAuthMessage(t.auth.signedOut);
   }
 
@@ -608,43 +621,53 @@ function App() {
     }).format(value ?? 0);
   }
 
-  return (
-    <div className="app-shell">
-      <header className="top-bar">
-        <div className="brand">
-          <strong>{t.brand.title}</strong>
-          <span>{t.brand.subtitle}</span>
-        </div>
-        <div className="top-actions">
-          <div className="language-toggle" aria-label={t.language.label}>
-            <button
-              type="button"
-              className={language === "en" ? "active" : ""}
-              onClick={() => updateLanguage("en")}
-            >
-              {t.language.english}
-            </button>
-            <button
-              type="button"
-              className={language === "zh" ? "active" : ""}
-              onClick={() => updateLanguage("zh")}
-            >
-              {t.language.chinese}
-            </button>
+  if (!profile) {
+    return (
+      <div className="auth-page">
+        <header className="auth-top-bar">
+          <div className="brand">
+            <strong>{t.brand.title}</strong>
+            <span>{t.brand.subtitle}</span>
           </div>
-          <div className="status-pill" aria-live="polite">
-            <span className="status-dot" />
-            {health ? `${health.phase} ${health.status}` : t.status.connecting}
+          <div className="top-actions">
+            <div className="language-toggle" aria-label={t.language.label}>
+              <button
+                type="button"
+                className={language === "en" ? "active" : ""}
+                onClick={() => updateLanguage("en")}
+              >
+                {t.language.english}
+              </button>
+              <button
+                type="button"
+                className={language === "zh" ? "active" : ""}
+                onClick={() => updateLanguage("zh")}
+              >
+                {t.language.chinese}
+              </button>
+            </div>
+            <div className="status-pill" aria-live="polite">
+              <span className="status-dot" />
+              {health ? `${health.phase} ${health.status}` : t.status.connecting}
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="dashboard">
-        <section className="hero">
-          <div className="hero-copy">
+        <main className="auth-layout">
+          <section className="auth-intro">
             <p className="eyebrow">{t.hero.eyebrow}</p>
-            <h1>{t.hero.title}</h1>
-            <p>{t.hero.body}</p>
+            <h1>{t.workspace.authTitle}</h1>
+            <p>{t.workspace.authSubtitle}</p>
+            <div className="auth-feature-grid">
+              <div>
+                <strong>{t.workspace.businessTitle}</strong>
+                <span>{t.workspace.businessDefault}</span>
+              </div>
+              <div>
+                <strong>{t.workspace.adminTitle}</strong>
+                <span>{t.workspace.adminDefault}</span>
+              </div>
+            </div>
             <div className="actions">
               <a className="primary-action" href="http://localhost:8080/swagger-ui.html">
                 {t.hero.apiDocs}
@@ -658,26 +681,18 @@ function App() {
                 {t.hero.backendUnavailable}: {error}
               </div>
             )}
-          </div>
+          </section>
 
-          <aside className="auth-panel" aria-label={t.auth.panelLabel}>
+          <aside className="auth-card" aria-label={t.auth.panelLabel}>
             <div className="section-heading compact">
-              <h2>{profile ? t.auth.signedIn : t.auth.accountAccess}</h2>
-              {profile && <button onClick={logout}>{t.auth.signOut}</button>}
+              <div>
+                <h2>{t.auth.accountAccess}</h2>
+                <span>{t.workspace.authAccessHint}</span>
+              </div>
             </div>
 
-            {profile ? (
-              <div className="profile-summary">
-                <strong>{profile.displayName}</strong>
-                <span>{profile.email}</span>
-                <div className="role-row">
-                  {profile.roles.map((role) => (
-                    <span className="step-tag" key={role}>
-                      {role}
-                    </span>
-                  ))}
-                </div>
-              </div>
+            {token ? (
+              <div className="empty-state">{t.status.connecting}</div>
             ) : (
               <form className="auth-form" onSubmit={handleAuthSubmit}>
                 <div className="mode-toggle">
@@ -708,22 +723,127 @@ function App() {
                 </label>
                 <label>
                   {t.auth.password}
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                  />
+                  <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
                 </label>
                 <button className="primary-action" type="submit">
                   {authMode === "register" ? t.auth.createAccount : t.auth.signIn}
                 </button>
               </form>
             )}
+
             {authMessage && <div className="inline-message">{authMessage}</div>}
+            <div className="risk-note-list">
+              <strong>{localizedNotice?.title ?? t.compliance.fallbackTitle}</strong>
+              <ul>
+                {(localizedNotice?.requiredDisclosures ?? [t.compliance.loading]).map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
+            </div>
+          </aside>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="app-shell">
+      <header className="top-bar">
+        <div className="brand">
+          <strong>{t.brand.title}</strong>
+          <span>{t.brand.subtitle}</span>
+        </div>
+        <div className="top-actions">
+          <div className="workspace-switch" aria-label={t.workspace.switchLabel}>
+            <button
+              type="button"
+              className={activeView === "business" ? "active" : ""}
+              onClick={() => setActiveView("business")}
+            >
+              {t.workspace.businessTab}
+            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                className={activeView === "admin" ? "active" : ""}
+                onClick={() => setActiveView("admin")}
+              >
+                {t.workspace.adminTab}
+              </button>
+            )}
+          </div>
+          <div className="language-toggle" aria-label={t.language.label}>
+            <button
+              type="button"
+              className={language === "en" ? "active" : ""}
+              onClick={() => updateLanguage("en")}
+            >
+              {t.language.english}
+            </button>
+            <button
+              type="button"
+              className={language === "zh" ? "active" : ""}
+              onClick={() => updateLanguage("zh")}
+            >
+              {t.language.chinese}
+            </button>
+          </div>
+          <div className="status-pill" aria-live="polite">
+            <span className="status-dot" />
+            {health ? `${health.phase} ${health.status}` : t.status.connecting}
+          </div>
+          <div className="user-chip">
+            <span>{t.workspace.signedInAs}</span>
+            <strong>{profile.displayName}</strong>
+          </div>
+          <button className="secondary-action compact-action" type="button" onClick={logout}>
+            {t.auth.signOut}
+          </button>
+        </div>
+      </header>
+
+      <main className="dashboard">
+        <section className="workspace-hero">
+          <div>
+            <p className="eyebrow">{t.hero.eyebrow}</p>
+            <h1>{isAdminView ? t.workspace.adminTitle : t.workspace.businessTitle}</h1>
+            <p>{isAdminView ? t.workspace.adminSubtitle : t.workspace.businessSubtitle}</p>
+            <div className="actions">
+              <a className="primary-action" href="http://localhost:8080/swagger-ui.html">
+                {t.hero.apiDocs}
+              </a>
+              <a className="secondary-action" href="http://localhost:8080/actuator/health">
+                {t.hero.serviceHealth}
+              </a>
+            </div>
+            {loadState === "error" && (
+              <div className="error-banner">
+                {t.hero.backendUnavailable}: {error}
+              </div>
+            )}
+          </div>
+
+          <aside className="workspace-summary">
+            <div>
+              <span>{t.workspace.roles}</span>
+              <div className="role-row">
+                {profile.roles.map((role) => (
+                  <span className="step-tag" key={role}>
+                    {role}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div>
+              <span>{t.workspace.currentWorkspace}</span>
+              <strong>{isAdminView ? t.workspace.adminTab : t.workspace.businessTab}</strong>
+            </div>
+            <small>{isAdminView ? t.workspace.adminDefault : t.workspace.businessDefault}</small>
           </aside>
         </section>
 
-        <section className="grid">
+        {isAdminView && (
+          <section className="grid">
           <div className="section-panel">
             <div className="section-heading">
               <h2>{t.pipeline.title}</h2>
@@ -753,8 +873,9 @@ function App() {
             )}
           </aside>
         </section>
+        )}
 
-        {profile && (
+        {isBusinessView && (
           <section className="section-panel profile-editor">
             <div className="section-heading">
               <h2>{t.profile.title}</h2>
@@ -808,7 +929,7 @@ function App() {
           </section>
         )}
 
-        {profile && (
+        {isBusinessView && (
           <section className="section-panel market-data-workspace">
             <div className="section-heading">
               <div>
@@ -923,7 +1044,7 @@ function App() {
           </section>
         )}
 
-        {profile && (
+        {isBusinessView && (
           <section className="section-panel ai-workspace">
             <div className="section-heading">
               <div>
@@ -1112,33 +1233,42 @@ function App() {
                   <div className="empty-state">{t.ai.noAnalysis}</div>
                 )}
               </div>
-
-              <div className="provider-list">
-                <h3>{t.ai.modelCatalog}</h3>
-                {aiModels.map((model) => (
-                  <article className="provider-row" key={model.id}>
-                    <div>
-                      <strong>{model.displayName}</strong>
-                      <span>
-                        {getAiProviderLabel(language, model.provider)} / {model.modelName} / {model.billingMode}
-                      </span>
-                      <span>{model.statusNote}</span>
-                    </div>
-                    <div className="provider-tags">
-                      <span className="step-tag">{model.enabled ? t.ai.enabled : t.ai.disabled}</span>
-                      {model.local && <span className="step-tag">{t.ai.localFree}</span>}
-                      {model.paidTier && <span className="step-tag">{t.ai.paidReserved}</span>}
-                      {model.testModeFree && <span className="step-tag">{t.ai.testFree}</span>}
-                      {model.requiresApiKey && <span className="step-tag">{t.ai.apiKeyRequired}</span>}
-                    </div>
-                  </article>
-                ))}
-              </div>
             </div>
           </section>
         )}
 
-        {profile && (
+        {isAdminView && (
+          <section className="section-panel model-admin-workspace">
+            <div className="section-heading">
+              <div>
+                <h2>{t.ai.modelCatalog}</h2>
+                <span>{t.workspace.modelCatalogSubtitle}</span>
+              </div>
+            </div>
+            <div className="provider-list">
+              {aiModels.map((model) => (
+                <article className="provider-row" key={model.id}>
+                  <div>
+                    <strong>{model.displayName}</strong>
+                    <span>
+                      {getAiProviderLabel(language, model.provider)} / {model.modelName} / {model.billingMode}
+                    </span>
+                    <span>{model.statusNote}</span>
+                  </div>
+                  <div className="provider-tags">
+                    <span className="step-tag">{model.enabled ? t.ai.enabled : t.ai.disabled}</span>
+                    {model.local && <span className="step-tag">{t.ai.localFree}</span>}
+                    {model.paidTier && <span className="step-tag">{t.ai.paidReserved}</span>}
+                    {model.testModeFree && <span className="step-tag">{t.ai.testFree}</span>}
+                    {model.requiresApiKey && <span className="step-tag">{t.ai.apiKeyRequired}</span>}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {isAdminView && (
           <section className="section-panel sandbox-workspace">
             <div className="section-heading">
               <div>
@@ -1234,7 +1364,7 @@ function App() {
           </section>
         )}
 
-        {profile && (
+        {isAdminView && (
           <section className="section-panel skill-workspace">
             <div className="section-heading">
               <div>
@@ -1452,7 +1582,7 @@ function App() {
           </section>
         )}
 
-        {profile && (
+        {isBusinessView && (
           <section className="section-panel portfolio-workspace">
             <div className="section-heading">
               <div>

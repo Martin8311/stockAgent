@@ -28,6 +28,27 @@ export const messages = {
     status: {
       connecting: "Connecting"
     },
+    workspace: {
+      switchLabel: "Workspace switch",
+      businessTab: "Business workspace",
+      adminTab: "Admin console",
+      authTitle: "Sign in to your investment research workspace",
+      authSubtitle:
+        "Use one focused entry point for portfolio research, AI-assisted analysis, governance, sandbox execution, and operational monitoring.",
+      authAccessHint: "Roles decide the landing workspace after sign-in.",
+      businessTitle: "Portfolio research workspace",
+      businessSubtitle:
+        "Manage holdings, update your investor profile, inspect market data, and run compliant AI-assisted analysis.",
+      adminTitle: "Governance and monitoring console",
+      adminSubtitle:
+        "Review platform health, compliance disclosures, model availability, sandbox execution, and governed skill changes.",
+      businessDefault: "Standard users land here for daily investment research workflows.",
+      adminDefault: "Administrators land here to operate governance, monitoring, and approval workflows.",
+      signedInAs: "Signed in as",
+      roles: "Roles",
+      currentWorkspace: "Current workspace",
+      modelCatalogSubtitle: "Provider availability, billing tags, API-key requirements, and test-mode status"
+    },
     hero: {
       eyebrow: "Phase 4 AI analysis foundation",
       title: "Selectable AI models with token accounting",
@@ -267,6 +288,25 @@ export const messages = {
     },
     status: {
       connecting: "连接中"
+    },
+    workspace: {
+      switchLabel: "工作区切换",
+      businessTab: "业务工作台",
+      adminTab: "后台管理",
+      authTitle: "登录投资研究工作台",
+      authSubtitle:
+        "通过一个清晰入口进入持仓研究、AI 辅助分析、治理审批、Sandbox 执行和运行监控能力。",
+      authAccessHint: "登录后将根据角色进入对应工作区。",
+      businessTitle: "持仓研究工作台",
+      businessSubtitle: "管理持仓、更新投资画像、查看行情数据，并运行带合规约束的 AI 辅助分析。",
+      adminTitle: "治理与监控后台",
+      adminSubtitle: "查看平台健康、合规披露、模型可用性、Sandbox 执行和受控 Skill 变更。",
+      businessDefault: "普通用户默认进入这里，完成日常投资研究工作流。",
+      adminDefault: "管理员默认进入这里，处理治理、监控和审批工作流。",
+      signedInAs: "当前用户",
+      roles: "角色",
+      currentWorkspace: "当前工作区",
+      modelCatalogSubtitle: "Provider 可用性、计费标签、API Key 要求和测试模式状态"
     },
     hero: {
       eyebrow: "阶段 4：AI 分析基础",
