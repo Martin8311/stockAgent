@@ -23,6 +23,9 @@ import org.springframework.test.web.servlet.MvcResult;
 @ActiveProfiles("test")
 @Sql(
         statements = {
+                "DELETE FROM approval_request",
+                "DELETE FROM skill_version",
+                "DELETE FROM skill_definition",
                 "DELETE FROM sandbox_task",
                 "DELETE FROM ai_token_usage_record",
                 "DELETE FROM ai_analysis_task",

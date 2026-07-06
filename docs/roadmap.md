@@ -1,5 +1,13 @@
 # Roadmap
 
+## Latest update: Phase 7 delivered
+
+- Implemented versioned Skill governance with `skill_definition`, `skill_version`, and `approval_request`.
+- Skill versions must pass Sandbox testing before approval.
+- Human approval is required before activation.
+- Only `ACTIVE` skill versions are injected into Agent analysis context.
+- Added React admin workbench for Skill creation, testing, approval, and activation.
+
 ## 阶段 0：项目初始化
 
 - 已建立 Spring Boot 后端、React 前端、Docker Compose MySQL、README 和核心设计文档。

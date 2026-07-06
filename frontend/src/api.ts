@@ -2,7 +2,11 @@ import type {
   ApiResponse,
   AuthResponse,
   AiModelDescriptor,
+  ApprovalRequest,
+  ApprovalStatus,
   ComplianceNotice,
+  CreateSkillPayload,
+  CreateSkillVersionPayload,
   InvestmentAnalysisPayload,
   InvestmentAnalysisResponse,
   MarketDataProvider,
@@ -12,6 +16,9 @@ import type {
   PortfolioTransactionPayload,
   SandboxTask,
   SandboxTaskPayload,
+  SkillDefinition,
+  SkillVersion,
+  SubmitSkillApprovalPayload,
   LoginPayload,
   RegisterPayload,
   SystemHealth,
@@ -177,4 +184,66 @@ export function submitSandboxTask(
   payload: SandboxTaskPayload
 ): Promise<ApiResponse<SandboxTask>> {
   return sendJson<ApiResponse<SandboxTask>>("POST", "/api/sandbox/tasks", payload, token);
+}
+
+export function getSkills(token: string): Promise<ApiResponse<SkillDefinition[]>> {
+  return getJsonWithToken<ApiResponse<SkillDefinition[]>>("/api/skills", token);
+}
+
+export function getAdminSkills(token: string): Promise<ApiResponse<SkillDefinition[]>> {
+  return getJsonWithToken<ApiResponse<SkillDefinition[]>>("/api/admin/skills", token);
+}
+
+export function createSkill(token: string, payload: CreateSkillPayload): Promise<ApiResponse<SkillDefinition>> {
+  return sendJson<ApiResponse<SkillDefinition>>("POST", "/api/admin/skills", payload, token);
+}
+
+export function createSkillVersion(
+  token: string,
+  skillId: number,
+  payload: CreateSkillVersionPayload
+): Promise<ApiResponse<SkillDefinition>> {
+  return sendJson<ApiResponse<SkillDefinition>>("POST", `/api/admin/skills/${skillId}/versions`, payload, token);
+}
+
+export function testSkillVersion(token: string, versionId: number): Promise<ApiResponse<SkillVersion>> {
+  return sendJson<ApiResponse<SkillVersion>>("POST", `/api/admin/skills/versions/${versionId}/test`, {}, token);
+}
+
+export function submitSkillVersionApproval(
+  token: string,
+  versionId: number,
+  payload: SubmitSkillApprovalPayload
+): Promise<ApiResponse<ApprovalRequest>> {
+  return sendJson<ApiResponse<ApprovalRequest>>(
+    "POST",
+    `/api/admin/skills/versions/${versionId}/submit-approval`,
+    payload,
+    token
+  );
+}
+
+export function activateSkillVersion(token: string, versionId: number): Promise<ApiResponse<SkillDefinition>> {
+  return sendJson<ApiResponse<SkillDefinition>>("POST", `/api/admin/skills/versions/${versionId}/activate`, {}, token);
+}
+
+export function getApprovals(token: string, status?: ApprovalStatus): Promise<ApiResponse<ApprovalRequest[]>> {
+  const query = status ? `?status=${status}` : "";
+  return getJsonWithToken<ApiResponse<ApprovalRequest[]>>(`/api/admin/approvals${query}`, token);
+}
+
+export function approveApproval(
+  token: string,
+  approvalId: number,
+  comment: string
+): Promise<ApiResponse<ApprovalRequest>> {
+  return sendJson<ApiResponse<ApprovalRequest>>("POST", `/api/admin/approvals/${approvalId}/approve`, { comment }, token);
+}
+
+export function rejectApproval(
+  token: string,
+  approvalId: number,
+  comment: string
+): Promise<ApiResponse<ApprovalRequest>> {
+  return sendJson<ApiResponse<ApprovalRequest>>("POST", `/api/admin/approvals/${approvalId}/reject`, { comment }, token);
 }

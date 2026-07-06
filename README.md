@@ -1,5 +1,9 @@
 # Harness Engineering Intelligent Assistant
 
+## Latest Delivery
+
+Phase 7 is now implemented: versioned Skill governance, Sandbox-based skill tests, human approval requests, admin activation, rollback-friendly active version pointers, audit records, and a React admin workbench.
+
 Harness Engineering Intelligent Assistant 是一个面向个人投资研究与持仓管理的工业级智能助手项目。它以 Spring Boot、Spring AI、可治理 Agent、市场数据抽象、持仓分析、审计日志、安全合规和阶段性交付为主线，用于展示全栈工程能力、AI 工程能力和金融合规意识。
 
 > 合规声明：本系统只提供教育性解释、辅助分析和风险提醒，不承诺收益，不替代持牌金融顾问意见。任何投资决策都需要用户自行判断并承担风险。

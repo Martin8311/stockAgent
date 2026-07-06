@@ -11,6 +11,7 @@ import com.harnessagent.marketdata.MarketDataService;
 import com.harnessagent.marketdata.MarketQuote;
 import com.harnessagent.portfolio.PortfolioService;
 import com.harnessagent.portfolio.PortfolioSummaryResponse;
+import com.harnessagent.skill.SkillRuntimeService;
 import com.harnessagent.user.AppUser;
 import com.harnessagent.user.UserProfile;
 import com.harnessagent.user.UserProfileRepository;
@@ -53,6 +54,7 @@ public class InvestmentAnalysisService {
     private final AuditEventService auditEventService;
     private final AiAnalysisTaskRepository analysisTaskRepository;
     private final SupervisorAgentService supervisorAgentService;
+    private final SkillRuntimeService skillRuntimeService;
     private final ObjectMapper objectMapper;
 
     public InvestmentAnalysisService(
@@ -69,6 +71,7 @@ public class InvestmentAnalysisService {
             AuditEventService auditEventService,
             AiAnalysisTaskRepository analysisTaskRepository,
             SupervisorAgentService supervisorAgentService,
+            SkillRuntimeService skillRuntimeService,
             ObjectMapper objectMapper
     ) {
         this.properties = properties;
@@ -84,6 +87,7 @@ public class InvestmentAnalysisService {
         this.auditEventService = auditEventService;
         this.analysisTaskRepository = analysisTaskRepository;
         this.supervisorAgentService = supervisorAgentService;
+        this.skillRuntimeService = skillRuntimeService;
         this.objectMapper = objectMapper;
     }
 
@@ -203,6 +207,9 @@ public class InvestmentAnalysisService {
             PortfolioSummaryResponse portfolioSummary
     ) {
         String responseLanguage = properties == null ? "zh-CN" : properties.responseLanguage();
+        String activeSkills = skillRuntimeService == null
+                ? "No active governed skills."
+                : skillRuntimeService.activeSkillContext();
         String systemPrompt = """
                 You are InvestmentAnalysisAgent inside a governed portfolio research assistant.
                 You provide educational explanations, auxiliary analysis, and risk reminders only.
@@ -233,6 +240,8 @@ public class InvestmentAnalysisService {
                 Quote risk warnings: %s
                 User profile: %s
                 Portfolio context: %s
+                Active governed skills:
+                %s
                 Required disclaimer: %s
                 """.formatted(
                 model.displayName(),
@@ -250,6 +259,7 @@ public class InvestmentAnalysisService {
                 quote.riskWarnings(),
                 describeProfile(profile),
                 describePortfolio(portfolioSummary),
+                activeSkills,
                 complianceProperties.defaultDisclaimer()
         );
         return new AiGatewayRequest(systemPrompt, userPrompt);

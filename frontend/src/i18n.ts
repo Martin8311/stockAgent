@@ -221,6 +221,36 @@ export const messages = {
       noOutput: "No executable output. The task may be rejected or pending approval.",
       noTasks: "No sandbox tasks yet."
     },
+    skill: {
+      title: "Skill governance",
+      subtitle: "Phase 7 versioned skills, sandbox tests, approval, activation, and rollback",
+      activeTitle: "Active governed skills",
+      adminTitle: "Admin skill workbench",
+      formTitle: "Create skill",
+      key: "Skill key",
+      name: "Name",
+      description: "Description",
+      category: "Category",
+      content: "Skill content",
+      testScript: "Sandbox test DSL",
+      create: "Create draft skill",
+      createVersion: "Create version",
+      test: "Test",
+      submitApproval: "Submit approval",
+      activate: "Activate",
+      approve: "Approve",
+      reject: "Reject",
+      approvalQueue: "Approval queue",
+      decisionComment: "Decision comment",
+      status: "Status",
+      version: "Version",
+      active: "Active",
+      noActive: "No active skills yet.",
+      noSkills: "No skills yet.",
+      noApprovals: "No pending approvals.",
+      saved: "Skill workflow updated.",
+      running: "Processing skill workflow..."
+    },
     errors: {
       unknownApi: "Unknown API error"
     }
@@ -432,6 +462,36 @@ export const messages = {
     },
     errors: {
       unknownApi: "未知 API 错误"
+    },
+    skill: {
+      title: "Skill 治理",
+      subtitle: "阶段 7：版本化 Skill、Sandbox 测试、审批、启用与回滚",
+      activeTitle: "已激活 Skill",
+      adminTitle: "管理员 Skill 工作台",
+      formTitle: "创建 Skill",
+      key: "Skill Key",
+      name: "名称",
+      description: "描述",
+      category: "分类",
+      content: "Skill 内容",
+      testScript: "Sandbox 测试 DSL",
+      create: "创建草稿 Skill",
+      createVersion: "创建版本",
+      test: "测试",
+      submitApproval: "提交审批",
+      activate: "启用",
+      approve: "批准",
+      reject: "拒绝",
+      approvalQueue: "审批队列",
+      decisionComment: "审批意见",
+      status: "状态",
+      version: "版本",
+      active: "已启用",
+      noActive: "暂无已激活 Skill。",
+      noSkills: "暂无 Skill。",
+      noApprovals: "暂无待审批请求。",
+      saved: "Skill 工作流已更新。",
+      running: "正在处理 Skill 工作流..."
     }
   }
 } as const;

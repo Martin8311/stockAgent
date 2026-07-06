@@ -1,8 +1,14 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import "./App.css";
 import {
+  activateSkillVersion,
+  approveApproval,
+  createSkill,
+  createSkillVersion,
   deletePortfolioTransaction,
   getAiModels,
+  getAdminSkills,
+  getApprovals,
   getComplianceNotice,
   getCurrentUser,
   getMarketDataProviders,
@@ -10,12 +16,16 @@ import {
   getPortfolioSummary,
   getPortfolioTransactions,
   getSandboxTasks,
+  getSkills,
   getSystemHealth,
   login,
   recordPortfolioTransaction,
   register,
+  rejectApproval,
   requestInvestmentAnalysis,
   submitSandboxTask,
+  submitSkillVersionApproval,
+  testSkillVersion,
   updateCurrentUserProfile
 } from "./api";
 import {
@@ -37,6 +47,7 @@ import {
 } from "./i18n";
 import type {
   AiModelDescriptor,
+  ApprovalRequest,
   AuthResponse,
   CapitalPurpose,
   ComplianceNotice,
@@ -48,6 +59,8 @@ import type {
   PortfolioTransaction,
   SandboxTask,
   SandboxTaskType,
+  SkillCategory,
+  SkillDefinition,
   AssetType,
   TransactionType,
   RiskPreference,
@@ -62,6 +75,13 @@ const TOKEN_STORAGE_KEY = "harness_agent_token";
 const assetTypes: AssetType[] = ["STOCK", "FUND", "ETF", "BOND", "CASH", "CRYPTO", "OTHER"];
 const transactionTypes: TransactionType[] = ["BUY", "SELL"];
 const sandboxTaskTypes: SandboxTaskType[] = ["MOCK_BACKTEST", "PORTFOLIO_STRESS_TEST"];
+const skillCategories: SkillCategory[] = [
+  "PORTFOLIO_ANALYSIS",
+  "RISK_CONTROL",
+  "STRATEGY_EXPLANATION",
+  "COMPLIANCE_REVIEW",
+  "SANDBOX_TEMPLATE"
+];
 
 function defaultTradeTime() {
   return new Date().toISOString().slice(0, 16);
@@ -119,6 +139,22 @@ function App() {
   const [sandboxTimeoutMs, setSandboxTimeoutMs] = useState("1200");
   const [sandboxLoading, setSandboxLoading] = useState(false);
   const [sandboxMessage, setSandboxMessage] = useState<string | null>(null);
+  const [activeSkills, setActiveSkills] = useState<SkillDefinition[]>([]);
+  const [adminSkills, setAdminSkills] = useState<SkillDefinition[]>([]);
+  const [approvalRequests, setApprovalRequests] = useState<ApprovalRequest[]>([]);
+  const [skillLoading, setSkillLoading] = useState(false);
+  const [skillMessage, setSkillMessage] = useState<string | null>(null);
+  const [newSkillKey, setNewSkillKey] = useState("risk-guard");
+  const [newSkillName, setNewSkillName] = useState("Risk Guard");
+  const [newSkillDescription, setNewSkillDescription] = useState("Adds governed portfolio risk guardrails.");
+  const [newSkillCategory, setNewSkillCategory] = useState<SkillCategory>("RISK_CONTROL");
+  const [newSkillContent, setNewSkillContent] = useState(
+    "When analysis references concentrated holdings, remind the user about diversification, time horizon, liquidity, and suitability."
+  );
+  const [newSkillTestScript, setNewSkillTestScript] = useState(
+    "symbol=AAPL\ninitialCapital=10000\nlookbackDays=30\nstrategy=skill-validation"
+  );
+  const [approvalComment, setApprovalComment] = useState("Approved for controlled demo use.");
   const [symbol, setSymbol] = useState("AAPL");
   const [assetName, setAssetName] = useState("Apple Inc.");
   const [assetType, setAssetType] = useState<AssetType>("STOCK");
@@ -150,6 +186,7 @@ function App() {
     () => aiModels.find((model) => model.id === selectedModelId) ?? null,
     [aiModels, selectedModelId]
   );
+  const isAdmin = profile?.roles.includes("ADMIN") ?? false;
 
   useEffect(() => {
     let cancelled = false;
@@ -192,6 +229,10 @@ function App() {
         loadMarketProviders(token);
         loadAiModels(token);
         loadSandboxTasks(token);
+        loadSkills(token);
+        if (response.data.roles.includes("ADMIN")) {
+          loadAdminSkillWorkspace(token);
+        }
       })
       .catch(() => {
         localStorage.removeItem(TOKEN_STORAGE_KEY);
@@ -204,6 +245,9 @@ function App() {
         setAiModels([]);
         setAnalysisResult(null);
         setSandboxTasks([]);
+        setActiveSkills([]);
+        setAdminSkills([]);
+        setApprovalRequests([]);
       });
   }, [token]);
 
@@ -309,6 +353,20 @@ function App() {
     setSandboxTasks(response.data);
   }
 
+  async function loadSkills(activeToken: string) {
+    const response = await getSkills(activeToken);
+    setActiveSkills(response.data);
+  }
+
+  async function loadAdminSkillWorkspace(activeToken: string) {
+    const [skillsResponse, approvalsResponse] = await Promise.all([
+      getAdminSkills(activeToken),
+      getApprovals(activeToken, "PENDING")
+    ]);
+    setAdminSkills(skillsResponse.data);
+    setApprovalRequests(approvalsResponse.data);
+  }
+
   async function handleQuoteSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!token) {
@@ -376,6 +434,132 @@ function App() {
     setSandboxScript(defaultSandboxScript(nextTaskType));
   }
 
+  async function refreshSkillWorkspace(activeToken: string) {
+    await loadSkills(activeToken);
+    if (isAdmin) {
+      await loadAdminSkillWorkspace(activeToken);
+    }
+  }
+
+  async function handleCreateSkill(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!token) {
+      return;
+    }
+    setSkillMessage(null);
+    setSkillLoading(true);
+    try {
+      await createSkill(token, {
+        skillKey: newSkillKey,
+        name: newSkillName,
+        description: newSkillDescription,
+        category: newSkillCategory,
+        content: newSkillContent,
+        testScript: newSkillTestScript
+      });
+      setSkillMessage(t.skill.saved);
+      await refreshSkillWorkspace(token);
+    } catch (requestError) {
+      setSkillMessage(requestError instanceof Error ? requestError.message : t.errors.unknownApi);
+    } finally {
+      setSkillLoading(false);
+    }
+  }
+
+  async function handleCreateSkillVersion(skillId: number) {
+    if (!token) {
+      return;
+    }
+    setSkillMessage(null);
+    setSkillLoading(true);
+    try {
+      await createSkillVersion(token, skillId, {
+        content: newSkillContent,
+        testScript: newSkillTestScript
+      });
+      setSkillMessage(t.skill.saved);
+      await refreshSkillWorkspace(token);
+    } catch (requestError) {
+      setSkillMessage(requestError instanceof Error ? requestError.message : t.errors.unknownApi);
+    } finally {
+      setSkillLoading(false);
+    }
+  }
+
+  async function handleTestSkillVersion(versionId: number) {
+    if (!token) {
+      return;
+    }
+    setSkillMessage(null);
+    setSkillLoading(true);
+    try {
+      await testSkillVersion(token, versionId);
+      setSkillMessage(t.skill.saved);
+      await refreshSkillWorkspace(token);
+    } catch (requestError) {
+      setSkillMessage(requestError instanceof Error ? requestError.message : t.errors.unknownApi);
+    } finally {
+      setSkillLoading(false);
+    }
+  }
+
+  async function handleSubmitSkillApproval(versionId: number) {
+    if (!token) {
+      return;
+    }
+    setSkillMessage(null);
+    setSkillLoading(true);
+    try {
+      await submitSkillVersionApproval(token, versionId, {
+        reason: "Sandbox test passed; request human approval before activation."
+      });
+      setSkillMessage(t.skill.saved);
+      await refreshSkillWorkspace(token);
+    } catch (requestError) {
+      setSkillMessage(requestError instanceof Error ? requestError.message : t.errors.unknownApi);
+    } finally {
+      setSkillLoading(false);
+    }
+  }
+
+  async function handleActivateSkillVersion(versionId: number) {
+    if (!token) {
+      return;
+    }
+    setSkillMessage(null);
+    setSkillLoading(true);
+    try {
+      await activateSkillVersion(token, versionId);
+      setSkillMessage(t.skill.saved);
+      await refreshSkillWorkspace(token);
+    } catch (requestError) {
+      setSkillMessage(requestError instanceof Error ? requestError.message : t.errors.unknownApi);
+    } finally {
+      setSkillLoading(false);
+    }
+  }
+
+  async function handleApprovalDecision(approvalId: number, decision: "approve" | "reject") {
+    if (!token) {
+      return;
+    }
+    setSkillMessage(null);
+    setSkillLoading(true);
+    try {
+      if (decision === "approve") {
+        await approveApproval(token, approvalId, approvalComment);
+      } else {
+        await rejectApproval(token, approvalId, approvalComment || "Rejected by reviewer.");
+      }
+      setSkillMessage(t.skill.saved);
+      await refreshSkillWorkspace(token);
+    } catch (requestError) {
+      setSkillMessage(requestError instanceof Error ? requestError.message : t.errors.unknownApi);
+    } finally {
+      setSkillLoading(false);
+    }
+  }
+
   function applyAuth(auth: AuthResponse) {
     localStorage.setItem(TOKEN_STORAGE_KEY, auth.accessToken);
     setToken(auth.accessToken);
@@ -392,6 +576,9 @@ function App() {
     setAiModels([]);
     setAnalysisResult(null);
     setSandboxTasks([]);
+    setActiveSkills([]);
+    setAdminSkills([]);
+    setApprovalRequests([]);
     setAuthMessage(t.auth.signedOut);
   }
 
@@ -1043,6 +1230,224 @@ function App() {
                   <div className="empty-state">{t.sandbox.noTasks}</div>
                 )}
               </div>
+            </div>
+          </section>
+        )}
+
+        {profile && (
+          <section className="section-panel skill-workspace">
+            <div className="section-heading">
+              <div>
+                <h2>{t.skill.title}</h2>
+                <span>{t.skill.subtitle}</span>
+              </div>
+            </div>
+
+            <div className="skill-grid">
+              <div className="skill-list">
+                <h3>{t.skill.activeTitle}</h3>
+                {activeSkills.length > 0 ? (
+                  activeSkills.map((skill) => (
+                    <article className="skill-card" key={skill.id}>
+                      <div className="quote-heading">
+                        <div>
+                          <strong>{skill.name}</strong>
+                          <span>
+                            {skill.skillKey} / {skill.category}
+                          </span>
+                        </div>
+                        <span className="step-tag">{t.skill.active}</span>
+                      </div>
+                      <p>{skill.description}</p>
+                      {skill.activeVersion && (
+                        <div className="analysis-summary">
+                          <strong>
+                            {t.skill.version} {skill.activeVersion.versionNumber}
+                          </strong>
+                          <p>{skill.activeVersion.content}</p>
+                        </div>
+                      )}
+                    </article>
+                  ))
+                ) : (
+                  <div className="empty-state">{t.skill.noActive}</div>
+                )}
+              </div>
+
+              {isAdmin && (
+                <form className="skill-form" onSubmit={handleCreateSkill}>
+                  <h3>{t.skill.formTitle}</h3>
+                  <label>
+                    {t.skill.key}
+                    <input value={newSkillKey} onChange={(event) => setNewSkillKey(event.target.value)} />
+                  </label>
+                  <label>
+                    {t.skill.name}
+                    <input value={newSkillName} onChange={(event) => setNewSkillName(event.target.value)} />
+                  </label>
+                  <label>
+                    {t.skill.category}
+                    <select
+                      value={newSkillCategory}
+                      onChange={(event) => setNewSkillCategory(event.target.value as SkillCategory)}
+                    >
+                      {skillCategories.map((category) => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="wide-field">
+                    {t.skill.description}
+                    <input
+                      value={newSkillDescription}
+                      onChange={(event) => setNewSkillDescription(event.target.value)}
+                    />
+                  </label>
+                  <label className="wide-field">
+                    {t.skill.content}
+                    <textarea value={newSkillContent} onChange={(event) => setNewSkillContent(event.target.value)} />
+                  </label>
+                  <label className="wide-field">
+                    {t.skill.testScript}
+                    <textarea
+                      value={newSkillTestScript}
+                      onChange={(event) => setNewSkillTestScript(event.target.value)}
+                    />
+                  </label>
+                  <button className="primary-action" type="submit" disabled={skillLoading}>
+                    {skillLoading ? t.skill.running : t.skill.create}
+                  </button>
+                  {skillMessage && <div className="inline-message">{skillMessage}</div>}
+                </form>
+              )}
+
+              {isAdmin && (
+                <div className="skill-list">
+                  <h3>{t.skill.adminTitle}</h3>
+                  {adminSkills.length > 0 ? (
+                    adminSkills.map((skill) => (
+                      <article className="skill-card" key={skill.id}>
+                        <div className="quote-heading">
+                          <div>
+                            <strong>{skill.name}</strong>
+                            <span>
+                              {skill.skillKey} / {skill.category}
+                            </span>
+                          </div>
+                          <button
+                            className="table-action"
+                            type="button"
+                            disabled={skillLoading}
+                            onClick={() => handleCreateSkillVersion(skill.id)}
+                          >
+                            {t.skill.createVersion}
+                          </button>
+                        </div>
+                        {skill.versions.map((version) => (
+                          <div className="skill-version-row" key={version.id}>
+                            <div>
+                              <strong>
+                                {t.skill.version} {version.versionNumber}
+                              </strong>
+                              <span>
+                                {t.skill.status}: {version.status}
+                              </span>
+                            </div>
+                            <p>{version.content}</p>
+                            {version.testResult && (
+                              <small>
+                                {version.testResult.summary} / sandbox #{version.testResult.sandboxTaskId}
+                              </small>
+                            )}
+                            <div className="skill-actions">
+                              <button
+                                className="table-action"
+                                type="button"
+                                disabled={
+                                  skillLoading ||
+                                  version.status === "PENDING_APPROVAL" ||
+                                  version.status === "APPROVED" ||
+                                  version.status === "ACTIVE"
+                                }
+                                onClick={() => handleTestSkillVersion(version.id)}
+                              >
+                                {t.skill.test}
+                              </button>
+                              <button
+                                className="table-action"
+                                type="button"
+                                disabled={skillLoading || version.status !== "TESTED"}
+                                onClick={() => handleSubmitSkillApproval(version.id)}
+                              >
+                                {t.skill.submitApproval}
+                              </button>
+                              <button
+                                className="table-action"
+                                type="button"
+                                disabled={skillLoading || version.status !== "APPROVED"}
+                                onClick={() => handleActivateSkillVersion(version.id)}
+                              >
+                                {t.skill.activate}
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </article>
+                    ))
+                  ) : (
+                    <div className="empty-state">{t.skill.noSkills}</div>
+                  )}
+                </div>
+              )}
+
+              {isAdmin && (
+                <div className="skill-list">
+                  <h3>{t.skill.approvalQueue}</h3>
+                  <label>
+                    {t.skill.decisionComment}
+                    <input value={approvalComment} onChange={(event) => setApprovalComment(event.target.value)} />
+                  </label>
+                  {approvalRequests.length > 0 ? (
+                    approvalRequests.map((approval) => (
+                      <article className="skill-card" key={approval.id}>
+                        <div className="quote-heading">
+                          <div>
+                            <strong>
+                              #{approval.id} {approval.requestType}
+                            </strong>
+                            <span>
+                              {approval.targetType} #{approval.targetId} / {approval.status}
+                            </span>
+                          </div>
+                        </div>
+                        <p>{approval.reason}</p>
+                        <div className="skill-actions">
+                          <button
+                            className="table-action"
+                            type="button"
+                            disabled={skillLoading}
+                            onClick={() => handleApprovalDecision(approval.id, "approve")}
+                          >
+                            {t.skill.approve}
+                          </button>
+                          <button
+                            className="table-action"
+                            type="button"
+                            disabled={skillLoading}
+                            onClick={() => handleApprovalDecision(approval.id, "reject")}
+                          >
+                            {t.skill.reject}
+                          </button>
+                        </div>
+                      </article>
+                    ))
+                  ) : (
+                    <div className="empty-state">{t.skill.noApprovals}</div>
+                  )}
+                </div>
+              )}
             </div>
           </section>
         )}

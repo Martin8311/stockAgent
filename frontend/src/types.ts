@@ -42,6 +42,23 @@ export type AgentWorkflowStatus = "COMPLETED" | "HUMAN_REVIEW_REQUIRED";
 export type SandboxTaskType = "MOCK_BACKTEST" | "PORTFOLIO_STRESS_TEST";
 export type SandboxTaskStatus = "COMPLETED" | "FAILED" | "REJECTED" | "PENDING_APPROVAL";
 export type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+export type SkillCategory =
+  | "PORTFOLIO_ANALYSIS"
+  | "RISK_CONTROL"
+  | "STRATEGY_EXPLANATION"
+  | "COMPLIANCE_REVIEW"
+  | "SANDBOX_TEMPLATE";
+export type SkillVersionStatus =
+  | "DRAFT"
+  | "TESTED"
+  | "PENDING_APPROVAL"
+  | "APPROVED"
+  | "ACTIVE"
+  | "REJECTED"
+  | "ARCHIVED";
+export type ApprovalStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type ApprovalRequestType = "SKILL_VERSION_APPROVAL";
+export type ApprovalTargetType = "SKILL_VERSION";
 
 export interface AuthUser {
   id: number;
@@ -275,4 +292,77 @@ export interface SandboxTaskPayload {
   taskType: SandboxTaskType;
   script: string;
   timeoutMs: number;
+}
+
+export interface SkillTestResult {
+  passed: boolean;
+  sandboxTaskId: number | null;
+  sandboxStatus: string;
+  summary: string;
+  checks: string[];
+  riskWarnings: string[];
+  testedAt: string;
+}
+
+export interface SkillVersion {
+  id: number;
+  skillId: number;
+  versionNumber: number;
+  status: SkillVersionStatus;
+  content: string;
+  testScript: string;
+  testResult: SkillTestResult | null;
+  approvalReason: string | null;
+  createdBy: string;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SkillDefinition {
+  id: number;
+  skillKey: string;
+  name: string;
+  description: string | null;
+  category: SkillCategory;
+  enabled: boolean;
+  activeVersionId: number | null;
+  activeVersion: SkillVersion | null;
+  versions: SkillVersion[];
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSkillPayload {
+  skillKey: string;
+  name: string;
+  description: string;
+  category: SkillCategory;
+  content: string;
+  testScript: string;
+}
+
+export interface CreateSkillVersionPayload {
+  content: string;
+  testScript: string;
+}
+
+export interface SubmitSkillApprovalPayload {
+  reason: string;
+}
+
+export interface ApprovalRequest {
+  id: number;
+  requestType: ApprovalRequestType;
+  targetType: ApprovalTargetType;
+  targetId: number;
+  status: ApprovalStatus;
+  reason: string;
+  decisionComment: string | null;
+  requestedBy: string;
+  reviewedBy: string | null;
+  createdAt: string;
+  decidedAt: string | null;
 }

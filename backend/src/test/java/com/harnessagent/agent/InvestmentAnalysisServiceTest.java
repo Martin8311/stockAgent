@@ -26,6 +26,7 @@ class InvestmentAnalysisServiceTest {
             null,
             null,
             null,
+            null,
             new ObjectMapper()
     );
 

@@ -1,5 +1,18 @@
 # Engineering Log
 
+## 阶段 7：Skill 管理与人工审批
+
+### Skill 自我进化必须经过版本、测试、审批和激活
+
+- 阶段：7
+- 现象：项目需要展示 Agent 的能力演进，但如果让模型或用户直接修改分析规则，会绕过测试、审批、审计和回滚。
+- 影响：未经验证的 Skill 可能污染投资分析结果；高风险策略可能绕过人工审核；面试时也无法解释“自我进化”如何受控。
+- 原因：Skill 不是普通配置项，它会影响 Agent 行为和投资相关输出，需要像生产变更一样治理。
+- 定位过程：阶段 6 已经有 Sandbox 受控执行能力，但 `PENDING_APPROVAL` 还只是状态记录；阶段 7 需要把审批和版本管理独立出来，成为后续 Sandbox、外部数据源、远程推送等高风险操作的公共治理基础。
+- 解决方案：新增 `skill_definition`、`skill_version`、`approval_request` 三张表；实现 `DRAFT -> TESTED -> PENDING_APPROVAL -> APPROVED -> ACTIVE` 状态流；Skill 测试复用 Sandbox；审批通过后才允许激活；Agent prompt 只读取 ACTIVE 版本。
+- 验证方式：后端集成测试覆盖创建 Skill、Sandbox 测试、提交审批、审批通过、激活、普通用户禁止访问 Admin API、未审批版本不可激活；前端构建验证 Skill 工作台。
+- 面试表达：我把 Skill 自我进化设计成“受控变更系统”，而不是 prompt 模板 CRUD。这样既展示 Agent 能力扩展，也说明了安全、合规、审计和回滚能力。
+
 ## 一键关闭所有服务
 
 ### 区分轻量停止和完整停止
