@@ -1,5 +1,18 @@
 # Engineering Log
 
+## 阶段 5：Multi-agent 编排
+
+### 先把 Agent 编排接入真实分析链路，而不是新建孤立 demo
+
+- 阶段：5
+- 现象：阶段 4 已经有 AI 分析能力，但从工程展示角度看仍像单个 service 调用模型，无法体现 multi-agent 协作、人工介入和合规治理链路。
+- 影响：如果另起一个 demo 接口展示多 Agent，会和真实投资分析路径脱节；如果直接引入复杂异步工作流，又会过早扩大数据库、队列、审批表和任务重放复杂度。
+- 原因：阶段 5 的核心不是“多几个类名”，而是让用户请求能真实经过 MarketData、Portfolio、Risk、Strategy、Compliance 等职责拆分，并把每一步结果结构化返回。
+- 定位过程：检查现有 `/api/ai/analysis` 发现它已经具备行情、持仓、模型、合规、计费和审计上下文，最适合作为 SupervisorAgent 的落地点。
+- 解决方案：新增 `SupervisorAgentService` 和 `AgentWorkflowResponse`，在现有分析响应中增加 `agentWorkflow`；同步编排 5 个子 Agent step，并根据外部数据、画像缺失、高风险意图、付费模型和合规缺口生成人工复核状态。
+- 验证方式：后端集成测试断言 AI 分析响应包含 5 个 Agent step，并在画像缺失场景返回 `HUMAN_REVIEW_REQUIRED`；前端构建验证 workflow 展示类型正确。
+- 面试表达：我没有为了“多 Agent”做空转 demo，而是把 agent trace 接入真实业务链路。这样既能展示职责拆分，也保留了审计、合规和后续审批流演进空间。
+
 ## 阶段 4 修复：LLM 结构化输出偏离 Schema
 
 ### 前端下拉框禁用未启用模型，导致用户无法切换查看模型

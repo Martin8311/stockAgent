@@ -36,6 +36,9 @@ export type TransactionType = "BUY" | "SELL";
 export type MarketDataSourceType = "MOCK" | "EXTERNAL_PLACEHOLDER";
 export type AiProviderType = "OLLAMA" | "MINIMAX";
 export type TokenUsageSource = "ACTUAL" | "ESTIMATED" | "MOCK";
+export type AgentRole = "MARKET_DATA" | "PORTFOLIO" | "RISK" | "STRATEGY" | "COMPLIANCE" | "SUPERVISOR";
+export type AgentStepStatus = "COMPLETED" | "SKIPPED" | "REVIEW_REQUIRED";
+export type AgentWorkflowStatus = "COMPLETED" | "HUMAN_REVIEW_REQUIRED";
 
 export interface AuthUser {
   id: number;
@@ -195,6 +198,25 @@ export interface TokenUsage {
   testMode: boolean;
 }
 
+export interface AgentStep {
+  agentName: string;
+  role: AgentRole;
+  status: AgentStepStatus;
+  summary: string;
+  observations: string[];
+  riskWarnings: string[];
+  requiresHumanApproval: boolean;
+  approvalReason: string | null;
+}
+
+export interface AgentWorkflow {
+  workflowId: string;
+  status: AgentWorkflowStatus;
+  humanApprovalRequired: boolean;
+  approvalReasons: string[];
+  steps: AgentStep[];
+}
+
 export interface InvestmentAnalysisPayload {
   modelId: string;
   symbol: string;
@@ -218,6 +240,7 @@ export interface InvestmentAnalysisResponse {
   educationalNotes: string[];
   confidence: number;
   tokenUsage: TokenUsage;
+  agentWorkflow: AgentWorkflow;
   disclaimer: string;
   createdAt: string;
 }

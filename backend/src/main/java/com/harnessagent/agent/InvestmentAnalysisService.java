@@ -52,6 +52,7 @@ public class InvestmentAnalysisService {
     private final ComplianceProperties complianceProperties;
     private final AuditEventService auditEventService;
     private final AiAnalysisTaskRepository analysisTaskRepository;
+    private final SupervisorAgentService supervisorAgentService;
     private final ObjectMapper objectMapper;
 
     public InvestmentAnalysisService(
@@ -67,6 +68,7 @@ public class InvestmentAnalysisService {
             ComplianceProperties complianceProperties,
             AuditEventService auditEventService,
             AiAnalysisTaskRepository analysisTaskRepository,
+            SupervisorAgentService supervisorAgentService,
             ObjectMapper objectMapper
     ) {
         this.properties = properties;
@@ -81,6 +83,7 @@ public class InvestmentAnalysisService {
         this.complianceProperties = complianceProperties;
         this.auditEventService = auditEventService;
         this.analysisTaskRepository = analysisTaskRepository;
+        this.supervisorAgentService = supervisorAgentService;
         this.objectMapper = objectMapper;
     }
 
@@ -115,6 +118,16 @@ public class InvestmentAnalysisService {
             InvestmentAnalysisContent rawContent = parseContent(gatewayResult.content(), quote);
             InvestmentAnalysisContent content = enforceCompliance(rawContent, quote, profile);
             TokenUsageResponse tokenUsage = tokenBillingService.record(task, user, model, prompt, gatewayResult);
+            AgentWorkflowResponse agentWorkflow = supervisorAgentService.orchestrate(
+                    "ai-analysis-" + task.getId(),
+                    request,
+                    model,
+                    quote,
+                    portfolioSummary,
+                    profile,
+                    content,
+                    complianceProperties.defaultDisclaimer()
+            );
             task.complete(content.investmentSummary());
             analysisTaskRepository.save(task);
             auditEventService.record(
@@ -122,6 +135,14 @@ public class InvestmentAnalysisService {
                     "AI_INVESTMENT_ANALYSIS_COMPLETED",
                     "Completed AI analysis " + task.getId() + " with model " + model.id() + ".",
                     RiskLevel.MEDIUM
+            );
+            auditEventService.record(
+                    actor,
+                    "AI_AGENT_WORKFLOW_COMPLETED",
+                    "Agent workflow " + agentWorkflow.workflowId()
+                            + " completed with status " + agentWorkflow.status()
+                            + " and " + agentWorkflow.steps().size() + " steps.",
+                    agentWorkflow.humanApprovalRequired() ? RiskLevel.HIGH : RiskLevel.MEDIUM
             );
             return new InvestmentAnalysisResponse(
                     task.getId(),
@@ -137,6 +158,7 @@ public class InvestmentAnalysisService {
                     content.educationalNotes(),
                     normalizeConfidence(content.confidence()),
                     tokenUsage,
+                    agentWorkflow,
                     complianceProperties.defaultDisclaimer(),
                     task.getCreatedAt() == null ? Instant.now() : task.getCreatedAt()
             );

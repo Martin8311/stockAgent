@@ -704,6 +704,57 @@ h1 {
   font-weight: 800;
 }
 
+.agent-workflow {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #deece8;
+  border-radius: 8px;
+  background: #fbfffd;
+}
+
+.agent-step-list {
+  display: grid;
+  gap: 10px;
+}
+
+.agent-step-row {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.35fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid #deece8;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.agent-step-row div {
+  display: grid;
+  gap: 4px;
+}
+
+.agent-step-row strong {
+  color: #163331;
+}
+
+.agent-step-row span,
+.agent-step-row small {
+  color: #638078;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.agent-step-row p {
+  color: #547069;
+  line-height: 1.5;
+}
+
+.agent-step-row small {
+  grid-column: 2;
+  color: #9b6a1c;
+}
+
 .analysis-lists {
   display: grid;
   gap: 12px;
@@ -880,6 +931,14 @@ tr:last-child td {
 
   .provider-row {
     grid-template-columns: 1fr;
+  }
+
+  .agent-step-row {
+    grid-template-columns: 1fr;
+  }
+
+  .agent-step-row small {
+    grid-column: 1;
   }
 
   .provider-tags {

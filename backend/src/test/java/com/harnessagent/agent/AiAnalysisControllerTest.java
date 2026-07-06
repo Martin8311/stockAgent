@@ -84,6 +84,15 @@ class AiAnalysisControllerTest {
                 .andExpect(jsonPath("$.data.tokenUsage.totalTokens").isNumber())
                 .andExpect(jsonPath("$.data.tokenUsage.usageSource").value("MOCK"))
                 .andExpect(jsonPath("$.data.tokenUsage.testMode").value(true))
+                .andExpect(jsonPath("$.data.agentWorkflow.workflowId").isNotEmpty())
+                .andExpect(jsonPath("$.data.agentWorkflow.status").value("HUMAN_REVIEW_REQUIRED"))
+                .andExpect(jsonPath("$.data.agentWorkflow.humanApprovalRequired").value(true))
+                .andExpect(jsonPath("$.data.agentWorkflow.steps.length()").value(5))
+                .andExpect(jsonPath("$.data.agentWorkflow.steps[0].agentName").value("MarketDataAgent"))
+                .andExpect(jsonPath("$.data.agentWorkflow.steps[1].agentName").value("PortfolioAgent"))
+                .andExpect(jsonPath("$.data.agentWorkflow.steps[2].agentName").value("RiskAgent"))
+                .andExpect(jsonPath("$.data.agentWorkflow.steps[3].agentName").value("StrategyAgent"))
+                .andExpect(jsonPath("$.data.agentWorkflow.steps[4].agentName").value("ComplianceAgent"))
                 .andExpect(jsonPath("$.data.disclaimer").isNotEmpty());
     }
 

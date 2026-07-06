@@ -789,6 +789,47 @@ function App() {
                       </span>
                       <span>{analysisResult.model.billingMode}</span>
                     </div>
+                    <div className="agent-workflow">
+                      <div className="quote-heading">
+                        <div>
+                          <strong>{t.ai.agentWorkflow}</strong>
+                          <span>
+                            {t.ai.workflowStatus}: {analysisResult.agentWorkflow.status}
+                          </span>
+                        </div>
+                        <span className="step-tag">
+                          {analysisResult.agentWorkflow.humanApprovalRequired
+                            ? t.ai.humanReviewRequired
+                            : t.ai.noHumanReview}
+                        </span>
+                      </div>
+                      {analysisResult.agentWorkflow.approvalReasons.length > 0 && (
+                        <div className="risk-note-list">
+                          <strong>{t.ai.approvalReasons}</strong>
+                          <ul>
+                            {analysisResult.agentWorkflow.approvalReasons.map((reason) => (
+                              <li key={reason}>{reason}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      <div className="agent-step-list">
+                        {analysisResult.agentWorkflow.steps.map((step) => (
+                          <article className="agent-step-row" key={step.agentName}>
+                            <div>
+                              <strong>{step.agentName}</strong>
+                              <span>
+                                {step.role} / {step.status}
+                              </span>
+                            </div>
+                            <p>{step.summary}</p>
+                            {step.requiresHumanApproval && step.approvalReason && (
+                              <small>{step.approvalReason}</small>
+                            )}
+                          </article>
+                        ))}
+                      </div>
+                    </div>
                     <div className="analysis-lists">
                       <div className="risk-note-list">
                         <strong>{t.ai.observations}</strong>

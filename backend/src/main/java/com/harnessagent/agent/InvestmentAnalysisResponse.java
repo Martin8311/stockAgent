@@ -19,6 +19,7 @@ public record InvestmentAnalysisResponse(
         List<String> educationalNotes,
         BigDecimal confidence,
         TokenUsageResponse tokenUsage,
+        AgentWorkflowResponse agentWorkflow,
         String disclaimer,
         Instant createdAt
 ) {

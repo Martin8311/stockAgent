@@ -194,6 +194,11 @@ export const messages = {
       estimatedCost: "Estimated cost",
       usageSource: "Usage source",
       confidence: "Confidence",
+      agentWorkflow: "Agent workflow",
+      workflowStatus: "Workflow status",
+      humanReviewRequired: "Human review required",
+      noHumanReview: "No human review required",
+      approvalReasons: "Approval reasons",
       disclaimer: "Disclaimer"
     },
     errors: {
@@ -378,6 +383,11 @@ export const messages = {
       estimatedCost: "预估费用",
       usageSource: "用量来源",
       confidence: "置信度",
+      agentWorkflow: "Agent 工作流",
+      workflowStatus: "工作流状态",
+      humanReviewRequired: "需要人工复核",
+      noHumanReview: "无需人工复核",
+      approvalReasons: "复核原因",
       disclaimer: "免责声明"
     },
     errors: {
