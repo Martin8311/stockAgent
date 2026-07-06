@@ -202,6 +202,7 @@ public class InvestmentAnalysisService {
             UserProfile profile,
             PortfolioSummaryResponse portfolioSummary
     ) {
+        String responseLanguage = properties == null ? "zh-CN" : properties.responseLanguage();
         String systemPrompt = """
                 You are InvestmentAnalysisAgent inside a governed portfolio research assistant.
                 You provide educational explanations, auxiliary analysis, and risk reminders only.
@@ -218,7 +219,9 @@ public class InvestmentAnalysisService {
                 Treat symbol, exchange, and currency as separate fields. The exchange is a trading venue, not another asset.
                 Do not describe an exchange as a stock, holding, or second analyzed asset unless the user explicitly asks for multiple symbols.
                 confidence must be a number between 0 and 1.
-                """;
+                Response language: %s.
+                Keep JSON field names exactly as specified in English. Write every natural-language JSON value in Simplified Chinese when response language is zh-CN.
+                """.formatted(responseLanguage);
         String userPrompt = """
                 Selected model: %s (%s)
                 User question: %s

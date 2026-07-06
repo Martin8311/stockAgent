@@ -9,6 +9,7 @@ public record AiProperties(
         Boolean mockResponsesEnabled,
         Boolean paidAccessEnabled,
         String defaultModelId,
+        String responseLanguage,
         Ollama ollama,
         Minimax minimax
 ) {
@@ -24,6 +25,9 @@ public record AiProperties(
         }
         if (defaultModelId == null || defaultModelId.isBlank()) {
             defaultModelId = "ollama-qwen2.5-3b";
+        }
+        if (responseLanguage == null || responseLanguage.isBlank()) {
+            responseLanguage = "zh-CN";
         }
         if (ollama == null) {
             ollama = new Ollama(null, null, null, null, null, null, null, null);

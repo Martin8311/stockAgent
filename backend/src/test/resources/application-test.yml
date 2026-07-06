@@ -27,6 +27,7 @@ app:
     mock-responses-enabled: true
     paid-access-enabled: true
     default-model-id: ollama-qwen2.5-3b
+    response-language: zh-CN
     ollama:
       enabled: true
       model-id: ollama-qwen2.5-3b

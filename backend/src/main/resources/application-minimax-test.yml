@@ -1,0 +1,17 @@
+app:
+  compliance:
+    default-disclaimer: "本系统仅提供教育性解释、辅助分析和风险提醒，不承诺收益，也不替代持牌金融顾问意见。"
+    required-warnings:
+      - "投资有风险，可能发生本金损失。"
+      - "历史表现不代表未来结果。"
+      - "任何预测都需要同时说明假设、数据来源、置信度和风险。"
+      - "个性化建议需要补充风险偏好、投资期限和资金用途。"
+  ai:
+    test-mode: true
+    mock-responses-enabled: false
+    paid-access-enabled: true
+    default-model-id: minimax-chat
+    response-language: zh-CN
+    minimax:
+      enabled: true
+      api-key: ${MINIMAX_API_KEY:}

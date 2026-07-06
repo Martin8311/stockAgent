@@ -1,5 +1,17 @@
 # Engineering Log
 
+## MiniMax 本机实测与中文输出
+
+### Live 模型测试必须显式打开，普通测试继续 mock
+
+- 阶段：4/5/6 后续修正
+- 现象：本地已经配置 `MINIMAX_API_KEY`，但 `application-test.yml` 默认 `AI_MOCK_RESPONSES=true`，导致测试环境即使选择 MiniMax，也会走确定性 mock gateway；同时原 prompt 主要是英文，MiniMax 可能返回英文自然语言内容。
+- 影响：普通测试稳定，但无法验证真实 MiniMax 链路；演示时如果返回英文，会影响中文项目体验。
+- 原因：自动化测试不能默认依赖外部网络和付费 API；LLM 输出语言也不能只靠用户问题推断，需要系统 prompt 明确约束。
+- 解决方案：新增 `AI_RESPONSE_LANGUAGE`，默认 `zh-CN`；prompt 明确“JSON 字段名保持英文，自然语言值使用简体中文”；新增 `application-minimax-test.yml` 和 `MiniMaxLiveSmokeTest`，只有设置 `MINIMAX_LIVE_TEST_ENABLED=true` 才真实调用 MiniMax。
+- 验证方式：普通 `mvn test` 应继续跳过 live test；本机需要真实验证时运行 `mvn -Dtest=MiniMaxLiveSmokeTest test`。
+- 面试表达：我把“稳定 CI 测试”和“真实供应商 smoke test”拆开，通过显式环境变量控制外部 API 调用，既能证明 MiniMax 链路真实可用，也避免把网络、额度和 API Key 风险引入默认测试。
+
 ## 阶段 6：Sandbox 执行环境
 
 ### Sandbox 先做白名单 DSL，不直接开放任意脚本

@@ -39,6 +39,7 @@ public class MiniMaxHttpGateway implements AiModelGateway {
         JsonNode response = restClient.post()
                 .uri(minimax.baseUrl())
                 .header("Authorization", "Bearer " + minimax.apiKey())
+                .header("Accept-Language", properties.responseLanguage())
                 .body(requestBody)
                 .retrieve()
                 .body(JsonNode.class);

@@ -64,6 +64,7 @@ app:
     mock-responses-enabled: ${AI_MOCK_RESPONSES:false}
     paid-access-enabled: ${AI_PAID_ACCESS_ENABLED:false}
     default-model-id: ${AI_DEFAULT_MODEL_ID:ollama-qwen2.5-3b}
+    response-language: ${AI_RESPONSE_LANGUAGE:zh-CN}
     ollama:
       enabled: ${OLLAMA_ENABLED:true}
       model-id: ollama-qwen2.5-3b

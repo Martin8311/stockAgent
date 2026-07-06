@@ -144,6 +144,22 @@ function Enable-LocalH2Fallback {
     $script:UseLocalH2 = $true
 }
 
+function Add-SpringProfile {
+    param(
+        [string]$Profiles,
+        [string]$Profile
+    )
+
+    $items = @()
+    if (![string]::IsNullOrWhiteSpace($Profiles)) {
+        $items = $Profiles.Split(",") | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+    }
+    if (!($items -contains $Profile)) {
+        $items += $Profile
+    }
+    return ($items -join ",")
+}
+
 function Get-MavenPath {
     $mvnCommand = Get-Command mvn.cmd -ErrorAction SilentlyContinue
     if ($mvnCommand) {
@@ -244,19 +260,29 @@ function Start-Backend {
     $escapedPom = (Join-Path $BackendDir "pom.xml").Replace("'", "''")
     $escapedMavenRepo = (Join-Path $HOME ".m2\repository").Replace("'", "''")
     $backendProfileBlock = ""
+    $activeProfiles = $env:SPRING_PROFILES_ACTIVE
 
     if ($script:UseLocalH2) {
         New-Item -ItemType Directory -Force -Path $H2Dir | Out-Null
         $h2Path = (Join-Path $H2Dir "harness_agent").Replace("\", "/")
         $h2Url = "jdbc:h2:file:$h2Path;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;DB_CLOSE_DELAY=-1"
         $escapedH2Url = $h2Url.Replace("'", "''")
+        $activeProfiles = Add-SpringProfile -Profiles $activeProfiles -Profile "local-h2"
+        Write-Step "Backend will use local H2 database files under $H2Dir."
+    }
+
+    if (![string]::IsNullOrWhiteSpace($activeProfiles)) {
+        $escapedProfiles = $activeProfiles.Replace("'", "''")
+        $backendProfileBlock += "`$env:SPRING_PROFILES_ACTIVE = '$escapedProfiles'`r`n"
+    }
+
+    if ($script:UseLocalH2) {
         $backendProfileBlock = @"
-`$env:SPRING_PROFILES_ACTIVE = 'local-h2'
+$backendProfileBlock
 `$env:DB_URL = '$escapedH2Url'
 `$env:DB_USERNAME = 'sa'
 `$env:DB_PASSWORD = ''
 "@
-        Write-Step "Backend will use local H2 database files under $H2Dir."
     }
 
     @"
