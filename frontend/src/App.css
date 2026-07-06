@@ -432,6 +432,7 @@ h1 {
   grid-template-columns: minmax(0, 1fr) minmax(320px, 0.75fr);
   gap: 24px;
   margin-top: 24px;
+  order: 2;
 }
 
 .section-panel {
@@ -528,6 +529,82 @@ h1 {
   font-weight: 800;
 }
 
+.overview-panel {
+  order: 1;
+  margin-top: 24px;
+}
+
+.overview-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.overview-card {
+  display: grid;
+  gap: 8px;
+  min-height: 132px;
+  padding: 16px;
+  border: 1px solid #deece8;
+  border-radius: 8px;
+  background: #fbfffd;
+}
+
+.overview-card span,
+.overview-insight span {
+  color: #638078;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.overview-card strong {
+  color: #163331;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.overview-card small {
+  color: #638078;
+  line-height: 1.45;
+}
+
+.metric-positive {
+  color: #0f766e !important;
+}
+
+.metric-negative {
+  color: #b42318 !important;
+}
+
+.overview-insights {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.overview-insight {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  min-height: 122px;
+  padding: 16px;
+  border: 1px solid #deece8;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.overview-insight strong {
+  color: #163331;
+  font-size: 18px;
+}
+
+.overview-insight p {
+  color: #547069;
+  line-height: 1.55;
+}
+
 .profile-editor {
   order: 2;
   margin-top: 24px;
@@ -549,17 +626,17 @@ h1 {
 }
 
 .model-admin-workspace {
-  order: 2;
-  margin-top: 24px;
-}
-
-.sandbox-workspace {
   order: 3;
   margin-top: 24px;
 }
 
-.skill-workspace {
+.sandbox-workspace {
   order: 4;
+  margin-top: 24px;
+}
+
+.skill-workspace {
+  order: 5;
   margin-top: 24px;
 }
 
@@ -1323,6 +1400,8 @@ tr:last-child td {
   .ai-grid,
   .sandbox-grid,
   .skill-grid,
+  .overview-metrics,
+  .overview-insights,
   .summary-metrics,
   .portfolio-form,
   .ai-analysis-form,

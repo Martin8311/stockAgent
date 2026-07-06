@@ -191,6 +191,36 @@ function App() {
   const isAdmin = profile?.roles.includes("ADMIN") ?? false;
   const isAdminView = activeView === "admin" && isAdmin;
   const isBusinessView = activeView === "business";
+  const profileCompletionRatio =
+    [riskPreference, investmentHorizon, capitalPurpose].filter((value) => value !== "UNKNOWN").length / 3;
+  const largestHolding = useMemo(() => {
+    const holdings = portfolioSummary?.holdings ?? [];
+    if (holdings.length === 0) {
+      return null;
+    }
+    return holdings.reduce((largest, holding) =>
+      holding.marketValue > largest.marketValue ? holding : largest
+    );
+  }, [portfolioSummary]);
+  const largestHoldingRatio =
+    largestHolding && portfolioSummary && portfolioSummary.totalMarketValue > 0
+      ? largestHolding.marketValue / portfolioSummary.totalMarketValue
+      : 0;
+  const enabledAiModelCount = aiModels.filter((model) => model.enabled).length;
+  const enabledMarketProviderCount = marketProviders.filter((provider) => provider.enabled).length;
+  const pendingSandboxTaskCount = sandboxTasks.filter((task) => task.status === "PENDING_APPROVAL").length;
+  const sandboxAttentionCount = sandboxTasks.filter(
+    (task) => task.status === "FAILED" || task.status === "REJECTED" || task.status === "PENDING_APPROVAL"
+  ).length;
+  const draftSkillVersionCount = adminSkills.reduce(
+    (count, skill) =>
+      count + skill.versions.filter((version) => version.status === "DRAFT" || version.status === "TESTED").length,
+    0
+  );
+  const pendingSkillVersionCount = adminSkills.reduce(
+    (count, skill) => count + skill.versions.filter((version) => version.status === "PENDING_APPROVAL").length,
+    0
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -841,6 +871,161 @@ function App() {
             <small>{isAdminView ? t.workspace.adminDefault : t.workspace.businessDefault}</small>
           </aside>
         </section>
+
+        {isBusinessView && (
+          <section className="section-panel overview-panel business-overview">
+            <div className="section-heading">
+              <div>
+                <h2>{t.overview.businessTitle}</h2>
+                <span>{t.overview.businessSubtitle}</span>
+              </div>
+            </div>
+
+            <div className="overview-metrics">
+              <article className="overview-card">
+                <span>{t.portfolio.totalMarketValue}</span>
+                <strong>{formatMoney(portfolioSummary?.totalMarketValue)}</strong>
+                <small>{t.overview.marketValueHint}</small>
+              </article>
+              <article className="overview-card">
+                <span>{t.portfolio.unrealizedPnl}</span>
+                <strong
+                  className={
+                    (portfolioSummary?.totalUnrealizedPnl ?? 0) >= 0 ? "metric-positive" : "metric-negative"
+                  }
+                >
+                  {formatMoney(portfolioSummary?.totalUnrealizedPnl)}
+                </strong>
+                <small>{formatPercent(portfolioSummary?.totalUnrealizedPnlRatio)}</small>
+              </article>
+              <article className="overview-card">
+                <span>{t.portfolio.holdingCount}</span>
+                <strong>{formatNumber(portfolioSummary?.holdingCount)}</strong>
+                <small>
+                  {formatNumber(transactions.length)} {t.overview.transactionsTracked}
+                </small>
+              </article>
+              <article className="overview-card">
+                <span>{t.overview.profileCompletion}</span>
+                <strong>{formatPercent(profileCompletionRatio)}</strong>
+                <small>{profileCompletionRatio >= 1 ? t.overview.profileReady : t.overview.profileNeedsContext}</small>
+              </article>
+            </div>
+
+            <div className="overview-insights">
+              <article className="overview-insight">
+                <span>{t.overview.largestHolding}</span>
+                {largestHolding ? (
+                  <>
+                    <strong>{largestHolding.asset.symbol}</strong>
+                    <p>
+                      {largestHolding.asset.name} · {formatPercent(largestHoldingRatio)} {t.overview.ofPortfolio}
+                    </p>
+                  </>
+                ) : (
+                  <p>{t.portfolio.noHoldings}</p>
+                )}
+              </article>
+              <article className="overview-insight">
+                <span>{t.overview.riskWatch}</span>
+                <p>{portfolioWarnings[0] ?? t.portfolio.disclaimer}</p>
+              </article>
+              <article className="overview-insight">
+                <span>{t.overview.aiReadiness}</span>
+                <strong>{selectedModel?.displayName ?? t.ai.modelCatalog}</strong>
+                <p>
+                  {selectedModel
+                    ? selectedModel.enabled
+                      ? t.overview.aiReady
+                      : selectedModel.statusNote
+                    : t.overview.aiModelMissing}
+                </p>
+              </article>
+              <article className="overview-insight">
+                <span>{t.overview.recentAnalysis}</span>
+                {analysisResult ? (
+                  <>
+                    <strong>
+                      {analysisResult.symbol} · {formatPercent(analysisResult.confidence)}
+                    </strong>
+                    <p>{new Date(analysisResult.createdAt).toLocaleString()}</p>
+                  </>
+                ) : (
+                  <p>{t.ai.noAnalysis}</p>
+                )}
+              </article>
+            </div>
+          </section>
+        )}
+
+        {isAdminView && (
+          <section className="section-panel overview-panel admin-overview">
+            <div className="section-heading">
+              <div>
+                <h2>{t.overview.adminTitle}</h2>
+                <span>{t.overview.adminSubtitle}</span>
+              </div>
+            </div>
+
+            <div className="overview-metrics">
+              <article className="overview-card">
+                <span>{t.overview.pendingApprovals}</span>
+                <strong>{formatNumber(approvalRequests.length)}</strong>
+                <small>{t.overview.pendingApprovalsHint}</small>
+              </article>
+              <article className="overview-card">
+                <span>{t.overview.sandboxQueue}</span>
+                <strong>{formatNumber(pendingSandboxTaskCount)}</strong>
+                <small>
+                  {formatNumber(sandboxTasks.length)} {t.overview.sandboxTasksTracked}
+                </small>
+              </article>
+              <article className="overview-card">
+                <span>{t.overview.modelAvailability}</span>
+                <strong>
+                  {formatNumber(enabledAiModelCount)} / {formatNumber(aiModels.length)}
+                </strong>
+                <small>{t.overview.enabledModels}</small>
+              </article>
+              <article className="overview-card">
+                <span>{t.overview.activeSkills}</span>
+                <strong>{formatNumber(activeSkills.length)}</strong>
+                <small>
+                  {formatNumber(adminSkills.length)} {t.overview.skillsManaged}
+                </small>
+              </article>
+            </div>
+
+            <div className="overview-insights">
+              <article className="overview-insight">
+                <span>{t.overview.platformHealth}</span>
+                <strong>{health ? `${health.phase} ${health.status}` : t.status.connecting}</strong>
+                <p>
+                  {health?.complianceGuardEnabled ? t.overview.complianceGuardOn : t.overview.complianceGuardUnknown}
+                </p>
+              </article>
+              <article className="overview-insight">
+                <span>{t.overview.sandboxAttention}</span>
+                <strong>{formatNumber(sandboxAttentionCount)}</strong>
+                <p>{sandboxAttentionCount > 0 ? t.overview.sandboxNeedsReview : t.overview.sandboxStable}</p>
+              </article>
+              <article className="overview-insight">
+                <span>{t.overview.providerReadiness}</span>
+                <strong>
+                  {formatNumber(enabledMarketProviderCount)} / {formatNumber(marketProviders.length)}
+                </strong>
+                <p>{t.overview.providerReadinessHint}</p>
+              </article>
+              <article className="overview-insight">
+                <span>{t.overview.skillVersionFlow}</span>
+                <strong>
+                  {formatNumber(pendingSkillVersionCount)} / {formatNumber(draftSkillVersionCount)}
+                </strong>
+                <p>{t.overview.skillVersionFlowHint}</p>
+              </article>
+            </div>
+          </section>
+        )}
 
         {isAdminView && (
           <section className="grid">
