@@ -277,7 +277,7 @@ function App() {
     const response = await getAiModels(activeToken);
     setAiModels(response.data);
     setSelectedModelId((currentModelId) => {
-      if (currentModelId && response.data.some((model) => model.id === currentModelId && model.enabled)) {
+      if (currentModelId && response.data.some((model) => model.id === currentModelId)) {
         return currentModelId;
       }
       return response.data.find((model) => model.enabled)?.id ?? response.data[0]?.id ?? "";
@@ -699,12 +699,18 @@ function App() {
                   {t.ai.model}
                   <select value={selectedModelId} onChange={(event) => setSelectedModelId(event.target.value)}>
                     {aiModels.map((model) => (
-                      <option key={model.id} value={model.id} disabled={!model.enabled}>
-                        {model.displayName} ({getAiProviderLabel(language, model.provider)})
+                      <option key={model.id} value={model.id}>
+                        {model.displayName} ({getAiProviderLabel(language, model.provider)} /{" "}
+                        {model.enabled ? t.ai.enabled : t.ai.disabled})
                       </option>
                     ))}
                   </select>
                 </label>
+                {selectedModel && (
+                  <div className="inline-message wide-field">
+                    {selectedModel.displayName}: {selectedModel.statusNote}
+                  </div>
+                )}
                 <label>
                   {t.ai.symbol}
                   <input value={analysisSymbol} onChange={(event) => setAnalysisSymbol(event.target.value)} />
