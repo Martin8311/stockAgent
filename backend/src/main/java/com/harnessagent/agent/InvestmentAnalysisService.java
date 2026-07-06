@@ -1,6 +1,7 @@
 package com.harnessagent.agent;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.harnessagent.audit.AuditEventService;
 import com.harnessagent.audit.RiskLevel;
@@ -111,7 +112,7 @@ public class InvestmentAnalysisService {
 
         try {
             AiGatewayResult gatewayResult = generate(model, prompt);
-            InvestmentAnalysisContent rawContent = parseContent(gatewayResult.content());
+            InvestmentAnalysisContent rawContent = parseContent(gatewayResult.content(), quote);
             InvestmentAnalysisContent content = enforceCompliance(rawContent, quote, profile);
             TokenUsageResponse tokenUsage = tokenBillingService.record(task, user, model, prompt, gatewayResult);
             task.complete(content.investmentSummary());
@@ -183,14 +184,25 @@ public class InvestmentAnalysisService {
                 You are InvestmentAnalysisAgent inside a governed portfolio research assistant.
                 You provide educational explanations, auxiliary analysis, and risk reminders only.
                 Do not promise returns. Do not use phrases such as guaranteed profit, must buy, sure win, or any deterministic recommendation.
-                Return only compact JSON with these fields:
-                investmentSummary, keyObservations, assumptions, riskWarnings, educationalNotes, confidence.
+                Return only one compact JSON object, no markdown, with exactly these fields and types:
+                {
+                  "investmentSummary": "one short plain string, never an object or array",
+                  "keyObservations": ["plain string"],
+                  "assumptions": ["plain string"],
+                  "riskWarnings": ["plain string"],
+                  "educationalNotes": ["plain string"],
+                  "confidence": 0.35
+                }
+                Treat symbol, exchange, and currency as separate fields. The exchange is a trading venue, not another asset.
+                Do not describe an exchange as a stock, holding, or second analyzed asset unless the user explicitly asks for multiple symbols.
                 confidence must be a number between 0 and 1.
                 """;
         String userPrompt = """
                 Selected model: %s (%s)
                 User question: %s
-                Asset: %s / %s / %s
+                Asset symbol: %s
+                Exchange/venue: %s (venue only, not another analyzed asset)
+                Currency: %s
                 Market quote: latest=%s, previousClose=%s, changePercent=%s, source=%s, confidence=%s
                 Quote assumptions: %s
                 Quote risk warnings: %s
@@ -218,20 +230,141 @@ public class InvestmentAnalysisService {
         return new AiGatewayRequest(systemPrompt, userPrompt);
     }
 
-    private InvestmentAnalysisContent parseContent(String rawContent) {
+    InvestmentAnalysisContent parseContent(String rawContent, MarketQuote quote) {
         String json = extractJson(rawContent);
         try {
-            return objectMapper.readValue(json, InvestmentAnalysisContent.class);
-        } catch (JsonProcessingException ex) {
+            JsonNode root = objectMapper.readTree(json);
+            if (root == null || !root.isObject()) {
+                return fallbackContent("The model response was not a JSON object.");
+            }
             return new InvestmentAnalysisContent(
-                    sanitizeSummary(rawContent),
-                    List.of("The model returned unstructured text, so the service wrapped it into a structured response."),
-                    List.of("The response parser could not validate a strict JSON object from the model output."),
-                    List.of("Model output should be reviewed before relying on it for any investment research workflow."),
-                    List.of("Use structured analysis as educational support only."),
-                    new BigDecimal("0.250000")
+                    readInvestmentSummary(root.path("investmentSummary"), quote),
+                    readStringList(root.path("keyObservations")),
+                    readStringList(root.path("assumptions")),
+                    readStringList(root.path("riskWarnings")),
+                    readStringList(root.path("educationalNotes")),
+                    readConfidence(root.path("confidence"))
             );
+        } catch (JsonProcessingException ex) {
+            return fallbackContent("The response parser could not validate strict JSON from the model output.");
         }
+    }
+
+    private InvestmentAnalysisContent fallbackContent(String reason) {
+        return new InvestmentAnalysisContent(
+                "The model did not return a valid structured analysis. Treat this result as unavailable and retry after review.",
+                List.of("The model response was repaired by the service because it did not match the required schema."),
+                List.of(reason),
+                List.of("Model output should be reviewed before relying on it for any investment research workflow."),
+                List.of("Use structured analysis as educational support only."),
+                new BigDecimal("0.250000")
+        );
+    }
+
+    private String readInvestmentSummary(JsonNode node, MarketQuote quote) {
+        if (node == null || node.isMissingNode() || node.isNull()) {
+            return defaultSummary(quote);
+        }
+        if (node.isTextual() || node.isNumber() || node.isBoolean()) {
+            return node.asText();
+        }
+        if (node.isObject()) {
+            return "Analysis for %s on %s in %s: latest price %s, previous close %s, changePercent %s. Treat this as auxiliary educational analysis, not a recommendation."
+                    .formatted(
+                            quote.symbol(),
+                            quote.exchange(),
+                            quote.currency(),
+                            formatQuoteValue(quote.latestPrice()),
+                            formatQuoteValue(quote.previousClose()),
+                            formatQuoteValue(quote.changePercent())
+                    );
+        }
+        List<String> values = readStringList(node);
+        if (values.isEmpty()) {
+            return defaultSummary(quote);
+        }
+        return String.join(" ", values);
+    }
+
+    private String defaultSummary(MarketQuote quote) {
+        return "Analysis for %s on %s in %s could not be summarized by the model. Treat this as auxiliary educational analysis only."
+                .formatted(quote.symbol(), quote.exchange(), quote.currency());
+    }
+
+    private String formatQuoteValue(BigDecimal value) {
+        if (value == null) {
+            return "unknown";
+        }
+        return value.stripTrailingZeros().toPlainString();
+    }
+
+    private List<String> readStringList(JsonNode node) {
+        if (node == null || node.isMissingNode() || node.isNull()) {
+            return new ArrayList<>();
+        }
+        List<String> values = new ArrayList<>();
+        if (node.isArray()) {
+            node.forEach(item -> {
+                String text = compactNode(item);
+                if (!text.isBlank()) {
+                    values.add(text);
+                }
+            });
+            return values;
+        }
+        String text = compactNode(node);
+        if (!text.isBlank()) {
+            values.add(text);
+        }
+        return values;
+    }
+
+    private String compactNode(JsonNode node) {
+        if (node == null || node.isMissingNode() || node.isNull()) {
+            return "";
+        }
+        if (node.isTextual() || node.isNumber() || node.isBoolean()) {
+            return node.asText();
+        }
+        if (node.isArray()) {
+            List<String> values = new ArrayList<>();
+            node.forEach(item -> {
+                String text = compactNode(item);
+                if (!text.isBlank()) {
+                    values.add(text);
+                }
+            });
+            return String.join(", ", values);
+        }
+        List<String> pairs = new ArrayList<>();
+        var fields = node.fields();
+        int count = 0;
+        while (fields.hasNext() && count < 6) {
+            var field = fields.next();
+            String value = compactNode(field.getValue());
+            if (!value.isBlank()) {
+                pairs.add(field.getKey() + "=" + value);
+            }
+            count++;
+        }
+        return String.join(", ", pairs);
+    }
+
+    private BigDecimal readConfidence(JsonNode node) {
+        if (node == null || node.isMissingNode() || node.isNull()) {
+            return new BigDecimal("0.300000");
+        }
+        try {
+            if (node.isNumber()) {
+                return node.decimalValue();
+            }
+            if (node.isTextual()) {
+                return new BigDecimal(node.asText().trim());
+            }
+        } catch (NumberFormatException ex) {
+            return new BigDecimal("0.300000");
+        }
+        return new BigDecimal("0.300000");
     }
 
     private String extractJson(String rawContent) {

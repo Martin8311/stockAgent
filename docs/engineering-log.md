@@ -1,5 +1,18 @@
 # Engineering Log
 
+## 阶段 4 修复：LLM 结构化输出偏离 Schema
+
+### 本地小模型把摘要字段返回成对象，导致前端展示原始 JSON
+
+- 阶段：4
+- 现象：AI 分析结果中 `investmentSummary` 被模型返回为对象，且把 `["AAPL", "NASDAQ"]` 放进 `assetName`，前端最终展示一整段 JSON，看起来像 Agent 输出异常。
+- 影响：结构化分析页可读性下降；用户容易误以为系统把 NASDAQ 当成第二个持仓；如果直接透传模型文本，也会削弱金融合规和审计可控性。
+- 原因：原 prompt 只列出了字段名，没有声明字段类型；`Asset: AAPL / NASDAQ / USD` 这种格式对小模型有歧义，容易把交易所理解成资产；后端原解析逻辑直接反序列化 DTO，失败后把原始模型内容包进摘要字段。
+- 定位过程：检查 `InvestmentAnalysisContent` 发现 `investmentSummary` 期望是 `String`；检查 `InvestmentAnalysisService.buildPrompt` 发现 prompt 未约束 `investmentSummary` 不允许 object/array；检查 fallback 发现解析失败会把 raw content 作为 summary 返回。
+- 解决方案：prompt 明确 JSON 字段类型，拆分 `Asset symbol`、`Exchange/venue`、`Currency`，说明 exchange 是交易场所；解析层改为逐字段读取 `JsonNode`，当 `investmentSummary` 是对象时使用服务端 quote 修复为一句摘要；非法 JSON fallback 不再泄露原始模型输出。
+- 验证方式：新增 `InvestmentAnalysisServiceTest` 覆盖对象摘要修复和非法 JSON 降级；执行后端 `mvn test`，20 个测试全部通过。
+- 面试表达：LLM 不能被当成可信结构化数据源。我的处理方式是“prompt 约束 + 服务端 schema 收口 + 容错修复 + 合规降级”，这样即便本地小模型输出偏离，也不会直接污染前端、审计记录或投资辅助结论。
+
 ## 阶段 4：Spring AI、模型选择与 token 计费
 
 ### 只读事务里调用带审计写入的行情服务导致 MySQL 500
