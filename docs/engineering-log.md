@@ -1,5 +1,18 @@
 # Engineering Log
 
+## 启动失败修复：MySQL Flyway V6 半迁移
+
+### H2 能通过不代表 MySQL DDL 一定可用
+
+- 阶段：阶段 7/8 启动修复
+- 现象：一键启动脚本中 MySQL 容器健康、前端已运行，但后端进程提前退出；`backend.log` 显示 Flyway 校验失败：`Detected failed migration to version 6 (create skill and approval tables)`。
+- 影响：后端无法启动，前端只能访问已有 Vite 服务，Skill 治理和后台管理相关接口不可用。
+- 原因：V6 的 `skill_version` 表把 `content`、`test_script`、`test_result_json` 定义成多个大 `VARCHAR(8000/4000)`。H2 测试环境可以通过，但 MySQL 8.4 使用 `utf8mb4` 时会触发行大小限制，导致 DDL 非事务性执行到一半：`skill_definition` 已创建，Flyway 记录 V6 失败。
+- 定位过程：先看 `.dev/logs/backend.log` 找到 Flyway 根因，再查询 `flyway_schema_history` 和表列表，确认 V6 `success=0` 且半迁移表为空。
+- 解决方案：将 Skill 大文本列改为 `TEXT`，并在 JPA 实体上使用 `columnDefinition = "TEXT"` 保持 schema validate 一致；本地 MySQL 清理空的半迁移表和失败历史后，让修正后的 V6 重新执行。
+- 验证方式：后端 `mvn test` 通过 29 个测试、0 失败、1 个 MiniMax live smoke 按设计跳过；重新执行 `scripts/start-dev.ps1` 后端和前端均 ready；MySQL `flyway_schema_history` 中 V6 为 `success=1`。
+- 面试表达：这个问题体现了“测试数据库兼容模式”和“真实 MySQL DDL”之间的差异。修复时不能只删除本地数据库，而要回到迁移脚本设计，把长文本建模为 `TEXT`，同时处理 Flyway 非事务 DDL 留下的半迁移状态。
+
 ## 阶段 8：业务工作台与后台治理监控 UI 分离
 
 ### 工作台需要角色概览，不能只给用户一串功能入口

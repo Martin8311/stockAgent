@@ -34,13 +34,13 @@ public class SkillVersion {
     @Column(nullable = false, length = 40)
     private SkillVersionStatus status;
 
-    @Column(nullable = false, length = 8000)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    @Column(name = "test_script", nullable = false, length = 4000)
+    @Column(name = "test_script", nullable = false, columnDefinition = "TEXT")
     private String testScript;
 
-    @Column(name = "test_result_json", length = 8000)
+    @Column(name = "test_result_json", columnDefinition = "TEXT")
     private String testResultJson;
 
     @Column(name = "approval_reason", length = 1000)
