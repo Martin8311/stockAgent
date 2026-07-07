@@ -1,12 +1,12 @@
 # Roadmap
 
-## Latest update: Phase 7 delivered
+## Latest update: Phase 9 observability and deployment baseline
 
-- Implemented versioned Skill governance with `skill_definition`, `skill_version`, and `approval_request`.
-- Skill versions must pass Sandbox testing before approval.
-- Human approval is required before activation.
-- Only `ACTIVE` skill versions are injected into Agent analysis context.
-- Added React admin workbench for Skill creation, testing, approval, and activation.
+- Added role-based business/admin workspace overviews.
+- Added Actuator `health`, `info`, and `prometheus` observability surface.
+- Added backend and frontend Dockerfiles.
+- Added Docker Compose `app` profile for full-stack containerized demo.
+- Added deployment guide and production hardening checklist.
 
 ## 阶段 0：项目初始化
 
@@ -64,9 +64,11 @@
 
 ## 阶段 9：测试、可观测性与部署
 
-- 单元测试、集成测试、API 测试。
-- Metrics、Tracing、结构化日志。
-- Docker Compose、部署文档、CI。
+- 已覆盖后端集成测试、API 测试和前端构建验证。
+- 已接入 Actuator health/info/prometheus，保留审计事件和本地启动日志。
+- 已新增 backend/frontend Dockerfile 和 Docker Compose `app` profile。
+- 已新增 `docs/deployment.md`，说明本地运行、容器化部署、监控端点和生产加固清单。
+- 后续可继续补充 CI workflow、集中日志、Prometheus/Grafana 样例和分布式 tracing。
 
 ## 阶段 10：简历作品打磨
 

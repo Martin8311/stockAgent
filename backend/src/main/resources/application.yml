@@ -32,8 +32,25 @@ management:
         include: health,info,metrics,prometheus
   endpoint:
     health:
+      show-details: when_authorized
       probes:
         enabled: true
+    prometheus:
+      enabled: true
+  info:
+    env:
+      enabled: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+info:
+  app:
+    name: Harness Engineering Intelligent Assistant
+    phase: PHASE_9
+    description: Investment research assistant with governed agents, sandbox execution, and skill approval.
+    compliance: Educational analysis and risk reminders only.
 
 springdoc:
   api-docs:

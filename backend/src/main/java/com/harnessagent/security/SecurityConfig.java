@@ -39,7 +39,14 @@ public class SecurityConfig {
                         .requestMatchers("/api/public/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/actuator/health/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers(
+                                "/actuator/health/**",
+                                "/actuator/info",
+                                "/actuator/prometheus",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
+                        ).permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, authException) ->

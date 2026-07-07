@@ -24,9 +24,19 @@ class PublicSystemControllerTest {
         mockMvc.perform(get("/api/public/system/health"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.phase").value("PHASE_1"))
+                .andExpect(jsonPath("$.data.phase").value("PHASE_9"))
                 .andExpect(jsonPath("$.data.status").value("UP"))
                 .andExpect(jsonPath("$.data.complianceGuardEnabled").value(true));
+    }
+
+    @Test
+    void actuatorInfoAndPrometheusArePublicForLocalMonitoring() throws Exception {
+        mockMvc.perform(get("/actuator/info"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.app.phase").value("PHASE_9"));
+
+        mockMvc.perform(get("/actuator/prometheus"))
+                .andExpect(status().isOk());
     }
 
     @Test

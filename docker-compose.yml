@@ -18,6 +18,48 @@ services:
       timeout: 5s
       retries: 10
 
+  backend:
+    profiles: ["app"]
+    build:
+      context: ./backend
+    container_name: harness-agent-backend
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/${DB_NAME:-harness_agent}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      DB_USERNAME: ${DB_USERNAME:-harness}
+      DB_PASSWORD: ${DB_PASSWORD:-harness}
+      JWT_SECRET: ${JWT_SECRET:-replace-with-at-least-32-random-characters}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
+      OLLAMA_ENABLED: ${OLLAMA_ENABLED:-true}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
+      AI_DEFAULT_MODEL_ID: ${AI_DEFAULT_MODEL_ID:-ollama-qwen2.5-3b}
+      AI_RESPONSE_LANGUAGE: ${AI_RESPONSE_LANGUAGE:-zh-CN}
+      AI_TEST_MODE: ${AI_TEST_MODE:-false}
+      AI_MOCK_RESPONSES: ${AI_MOCK_RESPONSES:-false}
+      AI_PAID_ACCESS_ENABLED: ${AI_PAID_ACCESS_ENABLED:-false}
+      MINIMAX_ENABLED: ${MINIMAX_ENABLED:-true}
+      MINIMAX_MODEL: ${MINIMAX_MODEL:-MiniMax-Text-01}
+      MINIMAX_BASE_URL: ${MINIMAX_BASE_URL:-https://api.minimax.chat/v1/chat/completions}
+      MINIMAX_API_KEY: ${MINIMAX_API_KEY:-}
+      MINIMAX_PROMPT_PRICE_PER_MILLION_TOKENS: ${MINIMAX_PROMPT_PRICE_PER_MILLION_TOKENS:-0.000000}
+      MINIMAX_COMPLETION_PRICE_PER_MILLION_TOKENS: ${MINIMAX_COMPLETION_PRICE_PER_MILLION_TOKENS:-0.000000}
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+
+  frontend:
+    profiles: ["app"]
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: ""
+    container_name: harness-agent-frontend
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+
 volumes:
   mysql-data:
-

@@ -1,5 +1,17 @@
 # Engineering Log
 
+## 阶段 9：可观测性与部署基线
+
+### 先交付可运行的运维闭环，再引入复杂平台
+
+- 阶段：9
+- 现象：项目已经具备业务、Agent、Sandbox、Skill 和审批能力，但部署与可观测性仍主要依赖本地脚本和日志文件。简历演示时，如果没有健康检查、指标端点和容器化入口，项目仍像本机 demo。
+- 影响：面试官无法快速判断系统是否具备工程化上线意识；后续引入真实模型、外部数据源和审批队列后，也缺少监控入口来观察错误率、延迟、队列积压和资源状态。
+- 原因：阶段 0-8 优先做业务闭环，避免过早引入 Prometheus/Grafana/Tracing/Kubernetes 等复杂平台。进入阶段 9 后，需要补齐最小部署和观测边界。
+- 解决方案：接入 Micrometer Prometheus registry，暴露 `/actuator/health`、`/actuator/info`、`/actuator/prometheus`；新增 backend/frontend Dockerfile；用 Docker Compose `app` profile 组织 MySQL、后端和前端；前端 Nginx 代理 `/api`、`/actuator` 和 Swagger；补充 `docs/deployment.md` 与 README。
+- 验证方式：后端 `mvn test` 验证 Actuator info/prometheus 可访问；前端 `npm run build` 验证 UI 构建；Docker Compose 配置可用于后续全栈镜像构建。
+- 面试表达：我没有一开始就把项目推向 K8s 和全链路追踪，而是先建立健康检查、指标、容器镜像和部署文档这几个最小生产化接口。这样既能展示上线意识，也不会让基础设施复杂度压过业务和 Agent 治理主线。
+
 ## 启动失败修复：MySQL Flyway V6 半迁移
 
 ### H2 能通过不代表 MySQL DDL 一定可用

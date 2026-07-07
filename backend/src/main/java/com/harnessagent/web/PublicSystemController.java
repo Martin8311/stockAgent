@@ -27,7 +27,7 @@ public class PublicSystemController {
     public ApiResponse<SystemHealthResponse> health() {
         return ApiResponse.ok(new SystemHealthResponse(
                 "harness-engineering-intelligent-assistant",
-                "PHASE_1",
+                "PHASE_9",
                 "UP",
                 true,
                 Instant.now()
